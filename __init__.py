@@ -4,7 +4,7 @@ import sys
 import os
 import re
 from PySide2.QtWidgets import (QLineEdit, QPushButton, QApplication, QTextEdit, QWidget,
-    QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter, 
+    QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
     QInputDialog, QMessageBox, QHeaderView, QMenu, QAction, QKeySequenceEdit,
     QPlainTextEdit)
 from PySide2.QtCore import (QDir, QObject, Qt, QFileInfo, QItemSelectionModel, QSettings)
@@ -12,7 +12,7 @@ from PySide2.QtGui import (QFont, QFontMetrics, QDesktopServices, QKeySequence)
 from binaryninja import user_plugin_path
 from binaryninja.plugin import PluginCommand, MainThreadActionHandler
 from binaryninja.mainthread import execute_on_main_thread
-from binaryninja.log import (log_info, log_warn, log_alert, log_debug)
+from binaryninja.log import (log_error, log_debug)
 from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu)
 import numbers
 
@@ -36,14 +36,14 @@ def loadSnippetFromFile(snippetPath):
     try:
         snippetText = open(snippetPath, 'r').readlines()
     except:
-        return (False, [], False)
+        return ("", "", "")
     if (len(snippetText) < 3):
-        return (False, [], False)
+        return ("", "", "")
     else:
         qKeySequence = QKeySequence(snippetText[1].strip()[1:])
         if qKeySequence.isEmpty():
             qKeySequence = None
-        return (snippetText[0].strip()[1:], 
+        return (snippetText[0].strip()[1:],
                 qKeySequence,
                 ''.join(snippetText[2:])
         )
@@ -52,7 +52,26 @@ def executeSnippet(code, context):
     snippetGlobals = {}
     snippetGlobals['current_view'] = context.binaryView
     snippetGlobals['bv'] = context.binaryView
-    snippetGlobals['current_function'] = context.function
+    if not context.function:
+        if not context.lowLevelILFunction:
+            if not context.mediumLevelILFunction:
+                snippetGlobals['current_mlil'] = None
+                snippetGlobals['current_function'] = None
+                snippetGlobals['current_llil'] = None
+            else:
+                snippetGlobals['current_mlil'] = context.mediumLevelILFunction
+                snippetGlobals['current_function'] = context.mediumLevelILFunction.source_function
+                snippetGlobals['current_llil'] = context.mediumLevelILFunction.source_function.llil
+        else:
+            snippetGlobals['current_llil'] = context.lowLevelILFunction
+            snippetGlobals['current_function'] = context.lowLevelILFunction.source_function
+            snippetGlobals['current_mlil'] = context.lowLevelILFunction.source_function.mlil
+    else:
+        snippetGlobals['current_function'] = context.function
+        snippetGlobals['current_mlil'] = context.function.mlil
+        snippetGlobals['current_llil'] = context.function.llil
+        snippetGlobals['current_token'] = context.function.llil
+
     if context.function is not None:
         snippetGlobals['current_basic_block'] = context.function.get_basic_block_at(context.address)
     else:
@@ -63,8 +82,7 @@ def executeSnippet(code, context):
         snippetGlobals['current_selection'] = (context.address, context.address+context.length)
     else:
         snippetGlobals['current_selection'] = None
-    snippetGlobals['current_llil'] = context.lowLevelILFunction
-    snippetGlobals['current_mlil'] = context.mediumLevelILFunction
+    snippetGlobals['uicontext'] = context
 
     exec("from binaryninja import *", snippetGlobals)
     exec(code, snippetGlobals)
@@ -124,7 +142,7 @@ class Snippets(QDialog):
         self.tree.setRootIndex(self.files.index(snippetPath))
         for x in range(self.columns):
             #self.tree.resizeColumnToContents(x)
-            self.tree.header().setSectionResizeMode(x, QHeaderView.ResizeToContents) 
+            self.tree.header().setSectionResizeMode(x, QHeaderView.ResizeToContents)
         treeLayout = QVBoxLayout()
         treeLayout.addWidget(self.tree)
         treeButtons = QHBoxLayout()
