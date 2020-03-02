@@ -1,18 +1,14 @@
-# Snippet UI Plugin (v1.1)
+# Snippet UI Plugin (v1.1a)
 Author: **Vector 35 Inc**
 _Example UI plugin demonstrating how to create a snippet manager that allows for quick one-liners to be bound to hotkeys._
 ## Description:
-# Snippet UI Plugin (v1.0 alpha)
+The snippet editor started as a simple example UI plugin to demonstrate new features available to UI plugins. It has turned into a functionally useful plugin in its own right. The snippet editor allows you to write small bits of code that might not be big enough to warrant the effort of a full plugin but are longer enough that you don't want to retype them every time in the python-console!
 
-Author: **Vector 35 Inc**
+As an added bonus, all snippets are added to the snippets menu and hot-keys can be associated with them as they make use of the action system. All action-system items are also available through the command-palette (CTL/CMD-p).
 
-_Example UI plugin demonstrating how to create a snippet manager that allows for quick one-liners to be bound to hotkeys._
+![](https://github.com/Vector35/snippets/blob/master/media/snippets.gif?raw=true)
 
-![](./media/snippets.gif)
-
-## Description:
-
-This plugin is dual purpose -- first, it demonstrates the new UI plugin interface available for third-party plugins, and secondly it implements the often-requested functionality of adding a snippet editor. This is particularly useful for binding commonly used snippets of python code from the ScriptingConsole to a hotkey to be able to trigger them more easily.
+.
 
 
 ## Installation Instructions
