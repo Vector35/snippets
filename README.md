@@ -1,4 +1,4 @@
-# Snippet UI Plugin (v1.0)
+# Snippet UI Plugin (v1.1)
 Author: **Vector 35 Inc**
 _Example UI plugin demonstrating how to create a snippet manager that allows for quick one-liners to be bound to hotkeys._
 ## Description:
