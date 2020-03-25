@@ -179,7 +179,11 @@ class Snippets(QDialog):
         hlayout.addWidget(hsplitter)
 
         self.showNormal() #Fixes bug that maximized windows are "stuck"
-        self.settings = QSettings("Vector35", "Snippet Editor")
+        #Because you can't trust QT to do the right thing here
+        if (sys.platform == "darwin"):
+            self.settings = QSettings("Vector35", "Snippet Editor")
+        else:
+            self.settings = QSettings("Vector 35", "Snippet Editor")
         if self.settings.contains("ui/snippeteditor/geometry"):
             self.restoreGeometry(self.settings.value("ui/snippeteditor/geometry"))
         else:
