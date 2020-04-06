@@ -239,7 +239,7 @@ class Snippets(QDialog):
                 else:
                     UIAction.registerAction(actionText, snippetKeys)
                 UIActionHandler.globalActions().bindAction(actionText, UIAction(makeSnippetFunction(snippetCode)))
-                Menu.mainMenu("Tools").addAction(actionText, actionText)
+                Menu.mainMenu("Tools").addAction(actionText, "Snippets")
 
     def clearSelection(self):
         self.keySequenceEdit.clear()
