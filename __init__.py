@@ -48,8 +48,28 @@ def loadSnippetFromFile(snippetPath):
                 ''.join(snippetText[2:])
         )
 
+def actionFromSnippet(snippetName, snippetDescription):
+    if not snippetDescription:
+        return "Snippets\\" + os.path.basename(snippetName).rstrip(".py")
+    else:
+        return "Snippets\\" + snippetDescription
+
+
 def executeSnippet(code, context):
     snippetGlobals = {}
+    '''#Disabling until a reliable repro for the disappear context happens again.
+    if context.binaryView == None:
+        dock = DockHandler.getActiveDockHandler()
+        if not dock:
+            log_error("Snippet triggered with no context and no dock handler.")
+            return
+        viewFrame = dock.getViewFrame()
+        if not viewFrame:
+            log_error("Snippet triggered with no context and no view frame. This should not happen.")
+            return
+        viewInterface = viewFrame.getCurrentViewInterface()
+        context.binaryView = viewInterface.getData()
+    '''
     snippetGlobals['current_view'] = context.binaryView
     snippetGlobals['bv'] = context.binaryView
     if not context.function:
@@ -96,12 +116,15 @@ def makeSnippetFunction(code):
 
 class Snippets(QDialog):
 
-    def __init__(self, parent=None):
+    def __init__(self, context, parent=None):
         super(Snippets, self).__init__(parent)
         # Create widgets
         self.setWindowModality(Qt.ApplicationModal)
         self.title = QLabel(self.tr("Snippet Editor"))
-        self.saveButton = QPushButton(self.tr("Save"))
+        self.saveButton = QPushButton(self.tr("&Save"))
+        self.saveButton.setShortcut(QKeySequence(self.tr("Ctrl+S")))
+        self.runButton = QPushButton(self.tr("&Run"))
+        self.runButton.setShortcut(QKeySequence(self.tr("Ctrl+R")))
         self.closeButton = QPushButton(self.tr("Close"))
         self.clearHotkeyButton = QPushButton(self.tr("Clear Hotkey"))
         self.setWindowTitle(self.title.text())
@@ -112,6 +135,7 @@ class Snippets(QDialog):
         self.edit.setPlaceholderText("python code")
         self.resetting = False
         self.columns = 3
+        self.context = context
 
         self.keySequenceEdit = QKeySequenceEdit(self)
         self.currentHotkey = QKeySequence()
@@ -158,6 +182,7 @@ class Snippets(QDialog):
         buttons.addWidget(self.keySequenceEdit)
         buttons.addWidget(self.currentHotkeyLabel)
         buttons.addWidget(self.closeButton)
+        buttons.addWidget(self.runButton)
         buttons.addWidget(self.saveButton)
 
         description = QHBoxLayout()
@@ -196,6 +221,7 @@ class Snippets(QDialog):
         # Add signals
         self.saveButton.clicked.connect(self.save)
         self.closeButton.clicked.connect(self.close)
+        self.runButton.clicked.connect(self.run)
         self.clearHotkeyButton.clicked.connect(self.clearHotkey)
         self.tree.selectionModel().selectionChanged.connect(self.selectFile)
         self.newSnippetButton.clicked.connect(self.newFileDialog)
@@ -229,10 +255,7 @@ class Snippets(QDialog):
         for snippet in includeWalk(snippetPath, ".py"):
             snippetKeys = None
             (snippetDescription, snippetKeys, snippetCode) = loadSnippetFromFile(snippet)
-            if not snippetDescription:
-                actionText = "Snippets\\" + os.path.basename(snippet).rstrip(".py")
-            else:
-                actionText = "Snippets\\" + snippetDescription
+            actionText = actionFromSnippet(snippet, snippetDescription)
             if snippetCode:
                 if snippetKeys == None:
                     UIAction.registerAction(actionText)
@@ -358,16 +381,37 @@ class Snippets(QDialog):
         outputSnippet.close()
         self.registerAllSnippets()
 
+    def run(self):
+        if self.context == None:
+            log_warn("Cannot run snippets outside of the UI at this time.")
+            return
+        if self.snippetChanged():
+            question = QMessageBox.question(self, self.tr("Confirm"), self.tr("You have unsaved changes, must save first. Save?"))
+            if (question == QMessageBox.StandardButton.No):
+                return
+            else:
+                self.save()
+        actionText = actionFromSnippet(self.currentFile, self.snippetDescription.text())
+        UIActionHandler.globalActions().executeAction(actionText, self.context)
+
+        log_debug("Saving snippet %s" % self.currentFile)
+        outputSnippet = open(self.currentFile, "w")
+        outputSnippet.write("#" + self.snippetDescription.text() + "\n")
+        outputSnippet.write("#" + self.keySequenceEdit.keySequence().toString() + "\n")
+        outputSnippet.write(self.edit.toPlainText())
+        outputSnippet.close()
+        self.registerAllSnippets()
+
     def clearHotkey(self):
         self.keySequenceEdit.clear()
 
 def launchPlugin(context):
-    snippets = Snippets()
+    snippets = Snippets(context)
     snippets.exec_()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    snippets = Snippets()
+    snippets = Snippets(None)
     snippets.show()
     sys.exit(app.exec_())
 else:
