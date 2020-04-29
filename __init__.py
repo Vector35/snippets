@@ -3,6 +3,7 @@
 import sys
 import os
 import re
+import codecs
 from PySide2.QtWidgets import (QLineEdit, QPushButton, QApplication, QTextEdit, QWidget,
     QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
     QInputDialog, QMessageBox, QHeaderView, QMenu, QAction, QKeySequenceEdit,
@@ -34,7 +35,7 @@ def includeWalk(dir, includeExt):
 
 def loadSnippetFromFile(snippetPath):
     try:
-        snippetText = open(snippetPath, 'r').readlines()
+        snippetText = codecs.open(snippetPath, 'r', "utf-8").readlines()
     except:
         return ("", "", "")
     if (len(snippetText) < 3):
@@ -57,7 +58,6 @@ def actionFromSnippet(snippetName, snippetDescription):
 
 def executeSnippet(code, context):
     snippetGlobals = {}
-    '''#Disabling until a reliable repro for the disappear context happens again.
     if context.binaryView == None:
         dock = DockHandler.getActiveDockHandler()
         if not dock:
@@ -69,7 +69,6 @@ def executeSnippet(code, context):
             return
         viewInterface = viewFrame.getCurrentViewInterface()
         context.binaryView = viewInterface.getData()
-    '''
     snippetGlobals['current_view'] = context.binaryView
     snippetGlobals['bv'] = context.binaryView
     if not context.function:
@@ -374,7 +373,7 @@ class Snippets(QDialog):
 
     def save(self):
         log_debug("Saving snippet %s" % self.currentFile)
-        outputSnippet = open(self.currentFile, "w")
+        outputSnippet = codecs.open(self.currentFile, "w", "utf-8")
         outputSnippet.write("#" + self.snippetDescription.text() + "\n")
         outputSnippet.write("#" + self.keySequenceEdit.keySequence().toString() + "\n")
         outputSnippet.write(self.edit.toPlainText())
@@ -395,7 +394,7 @@ class Snippets(QDialog):
         UIActionHandler.globalActions().executeAction(actionText, self.context)
 
         log_debug("Saving snippet %s" % self.currentFile)
-        outputSnippet = open(self.currentFile, "w")
+        outputSnippet = codecs.open(self.currentFile, "w", "utf-8")
         outputSnippet.write("#" + self.snippetDescription.text() + "\n")
         outputSnippet.write("#" + self.keySequenceEdit.keySequence().toString() + "\n")
         outputSnippet.write(self.edit.toPlainText())
