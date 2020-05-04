@@ -14,7 +14,7 @@ from binaryninja import user_plugin_path
 from binaryninja.plugin import PluginCommand, MainThreadActionHandler
 from binaryninja.mainthread import execute_on_main_thread
 from binaryninja.log import (log_error, log_debug)
-from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu)
+from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, DockHandler)
 import numbers
 
 snippetPath = os.path.realpath(os.path.join(user_plugin_path(), "..", "snippets"))
