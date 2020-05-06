@@ -8,8 +8,8 @@ from PySide2.QtWidgets import (QLineEdit, QPushButton, QApplication, QTextEdit, 
     QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
     QInputDialog, QMessageBox, QHeaderView, QMenu, QAction, QKeySequenceEdit,
     QPlainTextEdit)
-from PySide2.QtCore import (QDir, QObject, Qt, QFileInfo, QItemSelectionModel, QSettings)
-from PySide2.QtGui import (QFont, QFontMetrics, QDesktopServices, QKeySequence)
+from PySide2.QtCore import (QDir, QObject, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl)
+from PySide2.QtGui import (QFont, QFontMetrics, QDesktopServices, QKeySequence, QIcon)
 from binaryninja import user_plugin_path
 from binaryninja.plugin import PluginCommand, MainThreadActionHandler
 from binaryninja.mainthread import execute_on_main_thread
@@ -127,7 +127,9 @@ class Snippets(QDialog):
         self.closeButton = QPushButton(self.tr("Close"))
         self.clearHotkeyButton = QPushButton(self.tr("Clear Hotkey"))
         self.setWindowTitle(self.title.text())
-        self.newFolderButton = QPushButton("New Folder")
+        #self.newFolderButton = QPushButton("New Folder")
+        self.browseButton = QPushButton("Browse Snippets")
+        self.browseButton.setIcon(QIcon.fromTheme("edit-undo"))
         self.deleteSnippetButton = QPushButton("Delete")
         self.newSnippetButton = QPushButton("New Snippet")
         self.edit = QPlainTextEdit()
@@ -168,7 +170,8 @@ class Snippets(QDialog):
         treeLayout = QVBoxLayout()
         treeLayout.addWidget(self.tree)
         treeButtons = QHBoxLayout()
-        treeButtons.addWidget(self.newFolderButton)
+        #treeButtons.addWidget(self.newFolderButton)
+        treeButtons.addWidget(self.browseButton)
         treeButtons.addWidget(self.newSnippetButton)
         treeButtons.addWidget(self.deleteSnippetButton)
         treeLayout.addLayout(treeButtons)
@@ -225,7 +228,8 @@ class Snippets(QDialog):
         self.tree.selectionModel().selectionChanged.connect(self.selectFile)
         self.newSnippetButton.clicked.connect(self.newFileDialog)
         self.deleteSnippetButton.clicked.connect(self.deleteSnippet)
-        self.newFolderButton.clicked.connect(self.newFolder)
+        #self.newFolderButton.clicked.connect(self.newFolder)
+        self.browseButton.clicked.connect(self.browseSnippets)
 
         if self.settings.contains("ui/snippeteditor/selected"):
             selectedName = self.settings.value("ui/snippeteditor/selected")
@@ -280,6 +284,10 @@ class Snippets(QDialog):
             if question != QMessageBox.StandardButton.Yes:
                 return
         self.accept()
+
+    def browseSnippets(self):
+        url = QUrl.fromLocalFile(snippetPath)
+        QDesktopServices.openUrl(url);
 
     def newFolder(self):
         (folderName, ok) = QInputDialog.getText(self, self.tr("Folder Name"), self.tr("Folder Name: "))
