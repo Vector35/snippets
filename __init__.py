@@ -51,7 +51,10 @@ def loadSnippetFromFile(snippetPath):
 
 def actionFromSnippet(snippetName, snippetDescription):
     if not snippetDescription:
-        return "Snippets\\" + os.path.basename(snippetName).rstrip(".py")
+        shortName = os.path.basename(snippetName)
+        if shortName.endsWith('.py'):
+            shortName = shortName[:-3]
+        return "Snippets\\" + shortName
     else:
         return "Snippets\\" + snippetDescription
 
