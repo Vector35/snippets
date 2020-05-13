@@ -1,7 +1,10 @@
-# Snippet UI Plugin (v1.1a)
+# Snippet UI Plugin (v1.3)
 Author: **Vector 35 Inc**
+
 _Example UI plugin demonstrating how to create a snippet manager that allows for quick one-liners to be bound to hotkeys._
+
 ## Description:
+
 The snippet editor started as a simple example UI plugin to demonstrate new features available to UI plugins. It has turned into a functionally useful plugin in its own right. The snippet editor allows you to write small bits of code that might not be big enough to warrant the effort of a full plugin but are longer enough that you don't want to retype them every time in the python-console!
 
 As an added bonus, all snippets are added to the snippets menu and hot-keys can be associated with them as they make use of the action system. All action-system items are also available through the command-palette (CTL/CMD-p).
@@ -24,11 +27,12 @@ no special instructions, package manager is recommended
 ### Windows
 
 no special instructions, package manager is recommended
+
 ## Minimum Version
 
 This plugin requires the following minimum version of Binary Ninja:
 
- * 1401
+* 1528
 
 
 
