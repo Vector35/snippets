@@ -52,7 +52,7 @@ def loadSnippetFromFile(snippetPath):
 def actionFromSnippet(snippetName, snippetDescription):
     if not snippetDescription:
         shortName = os.path.basename(snippetName)
-        if shortName.endsWith('.py'):
+        if shortName.endswith('.py'):
             shortName = shortName[:-3]
         return "Snippets\\" + shortName
     else:
@@ -64,11 +64,11 @@ def executeSnippet(code, context):
     if context.binaryView == None:
         dock = DockHandler.getActiveDockHandler()
         if not dock:
-            log_error("Snippet triggered with no context and no dock handler.")
+            log_error("Snippet triggered with no context and no dock handler. This should not happen. Please report reproduction steps if possible.")
             return
         viewFrame = dock.getViewFrame()
         if not viewFrame:
-            log_error("Snippet triggered with no context and no view frame. This should not happen.")
+            log_error("Snippet triggered with no context and no view frame. Snippets require at least one open binary.")
             return
         viewInterface = viewFrame.getCurrentViewInterface()
         context.binaryView = viewInterface.getData()
