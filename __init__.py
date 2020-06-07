@@ -5,17 +5,19 @@ import os
 import re
 import codecs
 from PySide2.QtWidgets import (QLineEdit, QPushButton, QApplication, QTextEdit, QWidget,
-    QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
-    QInputDialog, QMessageBox, QHeaderView, QMenu, QAction, QKeySequenceEdit,
-    QPlainTextEdit)
+     QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
+     QInputDialog, QMessageBox, QHeaderView, QMenu, QAction, QKeySequenceEdit,
+     QPlainTextEdit)
 from PySide2.QtCore import (QDir, QObject, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl)
 from PySide2.QtGui import (QFont, QFontMetrics, QDesktopServices, QKeySequence, QIcon)
 from binaryninja import user_plugin_path
 from binaryninja.plugin import PluginCommand, MainThreadActionHandler
 from binaryninja.mainthread import execute_on_main_thread
 from binaryninja.log import (log_error, log_debug)
-from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, DockHandler)
+from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, DockHandler,
+     getThemeColor, ThemeColor)
 import numbers
+from .lntextedit import LNTextEdit
 
 snippetPath = os.path.realpath(os.path.join(user_plugin_path(), "..", "snippets"))
 try:
@@ -33,6 +35,7 @@ def includeWalk(dir, includeExt):
                 filePaths.append(os.path.join(root, f))
     return filePaths
 
+
 def loadSnippetFromFile(snippetPath):
     try:
         snippetText = codecs.open(snippetPath, 'r', "utf-8").readlines()
@@ -48,6 +51,7 @@ def loadSnippetFromFile(snippetPath):
                 qKeySequence,
                 ''.join(snippetText[2:])
         )
+
 
 def actionFromSnippet(snippetName, snippetDescription):
     if not snippetDescription:
@@ -113,6 +117,7 @@ def executeSnippet(code, context):
     if snippetGlobals['current_address'] != context.address:
         context.binaryView.file.navigate(context.binaryView.file.view, snippetGlobals['current_address'])
 
+
 def makeSnippetFunction(code):
     return lambda context: executeSnippet(code, context)
 
@@ -135,8 +140,9 @@ class Snippets(QDialog):
         self.browseButton.setIcon(QIcon.fromTheme("edit-undo"))
         self.deleteSnippetButton = QPushButton("Delete")
         self.newSnippetButton = QPushButton("New Snippet")
-        self.edit = QPlainTextEdit()
-        self.edit.setPlaceholderText("python code")
+        self.edit = LNTextEdit()
+        self.edit.edit.setPlaceholderText("python code")
+        self.edit.edit.highlight_color = getThemeColor(ThemeColor.SelectionColor)
         self.resetting = False
         self.columns = 3
         self.context = context
@@ -151,9 +157,9 @@ class Snippets(QDialog):
 
         #Set Editbox Size
         font = getMonospaceFont(self)
-        self.edit.setFont(font)
+        self.edit.edit.setFont(font)
         font = QFontMetrics(font)
-        self.edit.setTabStopWidth(4 * font.width(' ')); #TODO, replace with settings API
+        self.edit.edit.setTabStopWidth(4 * font.width(' ')); #TODO, replace with settings API
 
         #Files
         self.files = QFileSystemModel()
@@ -240,9 +246,9 @@ class Snippets(QDialog):
             if self.tree.selectionModel().hasSelection():
                 self.selectFile(self.tree.selectionModel().selection(), None)
                 self.edit.setFocus()
-                cursor = self.edit.textCursor()
-                cursor.setPosition(self.edit.document().characterCount()-1)
-                self.edit.setTextCursor(cursor)
+                cursor = self.edit.edit.textCursor()
+                cursor.setPosition(self.edit.edit.document().characterCount()-1)
+                self.edit.edit.setTextCursor(cursor)
             else:
                 self.readOnly(True)
         else:
@@ -276,7 +282,7 @@ class Snippets(QDialog):
         self.currentHotkeyLabel.setText("")
         self.currentFileLabel.setText("")
         self.snippetDescription.setText("")
-        self.edit.setPlainText("")
+        self.edit.edit.setPlainText("")
         self.currentFile = ""
 
     def reject(self):
@@ -331,7 +337,7 @@ class Snippets(QDialog):
         (snippetDescription, snippetKeys, snippetCode) = loadSnippetFromFile(self.currentFile)
         self.snippetDescription.setText(snippetDescription) if snippetDescription else self.snippetDescription.setText("")
         self.keySequenceEdit.setKeySequence(snippetKeys) if snippetKeys else self.keySequenceEdit.setKeySequence(QKeySequence(""))
-        self.edit.setPlainText(snippetCode) if snippetCode else self.edit.setPlainText("")
+        self.edit.edit.setPlainText(snippetCode) if snippetCode else self.edit.edit.setPlainText("")
         self.readOnly(False)
 
     def newFileDialog(self):
@@ -353,7 +359,7 @@ class Snippets(QDialog):
     def readOnly(self, flag):
         self.keySequenceEdit.setEnabled(not flag)
         self.snippetDescription.setReadOnly(flag)
-        self.edit.setReadOnly(flag)
+        self.edit.edit.setReadOnly(flag)
         if flag:
             self.snippetDescription.setDisabled(True)
             self.edit.setDisabled(True)
@@ -379,7 +385,7 @@ class Snippets(QDialog):
             return True
         if snippetKeys != None and snippetKeys != self.keySequenceEdit.keySequence().toString():
             return True
-        return self.edit.toPlainText() != snippetCode or \
+        return self.edit.edit.toPlainText() != snippetCode or \
                self.snippetDescription.text() != snippetDescription
 
     def save(self):
@@ -387,7 +393,7 @@ class Snippets(QDialog):
         outputSnippet = codecs.open(self.currentFile, "w", "utf-8")
         outputSnippet.write("#" + self.snippetDescription.text() + "\n")
         outputSnippet.write("#" + self.keySequenceEdit.keySequence().toString() + "\n")
-        outputSnippet.write(self.edit.toPlainText())
+        outputSnippet.write(self.edit.edit.toPlainText())
         outputSnippet.close()
         self.registerAllSnippets()
 
@@ -408,16 +414,18 @@ class Snippets(QDialog):
         outputSnippet = codecs.open(self.currentFile, "w", "utf-8")
         outputSnippet.write("#" + self.snippetDescription.text() + "\n")
         outputSnippet.write("#" + self.keySequenceEdit.keySequence().toString() + "\n")
-        outputSnippet.write(self.edit.toPlainText())
+        outputSnippet.write(self.edit.edit.toPlainText())
         outputSnippet.close()
         self.registerAllSnippets()
 
     def clearHotkey(self):
         self.keySequenceEdit.clear()
 
+
 def launchPlugin(context):
     snippets = Snippets(context)
     snippets.exec_()
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
