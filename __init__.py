@@ -281,7 +281,8 @@ class Snippets(QDialog):
         self.currentHotkeyLabel.setText("")
         self.currentFileLabel.setText("")
         self.snippetDescription.setText("")
-        self.edit.setPlainText("")
+        self.edit.clear()
+        self.tree.clearSelection()
         self.currentFile = ""
 
     def reject(self):
@@ -311,11 +312,16 @@ class Snippets(QDialog):
         if (self.resetting):
             self.resetting = False
             return
+        if len(new.indexes()) == 0:
+            self.clearSelection()
+            self.currentFile = ""
+            self.readOnly(True)
+            return
         newSelection = self.files.filePath(new.indexes()[0])
         self.settings.setValue("ui/snippeteditor/selected", newSelection)
         if QFileInfo(newSelection).isDir():
             self.readOnly(True)
-            self.tree.clearSelection()
+            self.clearSelection()
             self.currentFile = ""
             return
 
