@@ -1,7 +1,7 @@
-# Snippet UI Plugin (v1.3)
+# Snippet UI Plugin (v1.4)
 Author: **Vector 35 Inc**
 
-_Example UI plugin demonstrating how to create a snippet manager that allows for quick one-liners to be bound to hotkeys._
+_Powerful code-editing plugin for writing and managing python code-snippets with syntax highlightingd, hotkey binding and other features_
 
 ## Description:
 
