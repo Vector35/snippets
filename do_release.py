@@ -28,12 +28,12 @@ for tag in repo.tags:
 			new_version = '.'.join(digits)
 			data['version'] = new_version
 			print(f"Updating plugin with new version {new_version}")
-			run("./generate_plugininfo.py -r -f", check=True)
-			with open('plugin.json') as plugin:
+			run(["./generate_plugininfo.py", "-r", "-f"], check=True)
+			with open('plugin.json', 'w') as plugin:
 				dump(data, plugin)
-			repo.git.add('plugin.json')
-			repo.git.add('README.md')
-			repo.git.commit(f"Updating to {new_version}")
+			repo.index.add('plugin.json')
+			repo.index.add('README.md')
+			repo.index.commit(f"Updating to {new_version}")
 			repo.git.push('origin')
 		else:
 			print("Stopping...")
