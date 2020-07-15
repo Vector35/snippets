@@ -120,6 +120,8 @@ class Snippets(QWidget, DockContextHandler):
         #super(Snippets, self).__init__(parent)
         QWidget.__init__(self, parent)
         DockContextHandler.__init__(self, self, name)
+        self.actionHandler = UIActionHandler()
+        self.actionHandler.setupActionHandler(self)
 
         # Create widgets
         #self.setWindowModality(Qt.ApplicationModal)
