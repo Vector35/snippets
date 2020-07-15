@@ -15,7 +15,7 @@ from binaryninja.plugin import PluginCommand, MainThreadActionHandler
 from binaryninja.mainthread import execute_on_main_thread
 from binaryninja.log import (log_error, log_debug)
 from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, DockHandler,
-     getThemeColor, ThemeColor)
+     DockContextHandler, getThemeColor, ThemeColor)
 import numbers
 from .QCodeEditor import QCodeEditor, PythonHighlighter
 
@@ -63,19 +63,12 @@ def actionFromSnippet(snippetName, snippetDescription):
         return "Snippets\\" + snippetDescription
 
 
-def executeSnippet(code, context):
+def executeSnippet(code):
     snippetGlobals = {}
-    if context.binaryView == None:
-        dock = DockHandler.getActiveDockHandler()
-        if not dock:
-            log_error("Snippet triggered with no context and no dock handler. This should not happen. Please report reproduction steps if possible.")
-            return
-        viewFrame = dock.getViewFrame()
-        if not viewFrame:
-            log_error("Snippet triggered with no context and no view frame. Snippets require at least one open binary.")
-            return
-        viewInterface = viewFrame.getCurrentViewInterface()
-        context.binaryView = viewInterface.getData()
+    dock = DockHandler.getActiveDockHandler()
+    viewFrame = dock.getViewFrame()
+    viewInterface = viewFrame.getCurrentViewInterface()
+    context = viewInterface.actionContext()
     snippetGlobals['current_view'] = context.binaryView
     snippetGlobals['bv'] = context.binaryView
     if not context.function:
@@ -119,14 +112,17 @@ def executeSnippet(code, context):
 
 
 def makeSnippetFunction(code):
-    return lambda context: executeSnippet(code, context)
+    return lambda context: executeSnippet(code)
 
-class Snippets(QDialog):
+class Snippets(QWidget, DockContextHandler):
 
-    def __init__(self, context, parent=None):
-        super(Snippets, self).__init__(parent)
+    def __init__(self, parent, name, data):
+        #super(Snippets, self).__init__(parent)
+        QWidget.__init__(self, parent)
+        DockContextHandler.__init__(self, self, name)
+
         # Create widgets
-        self.setWindowModality(Qt.ApplicationModal)
+        #self.setWindowModality(Qt.ApplicationModal)
         self.title = QLabel(self.tr("Snippet Editor"))
         self.saveButton = QPushButton(self.tr("&Save"))
         self.saveButton.setShortcut(QKeySequence(self.tr("Ctrl+S")))
@@ -144,7 +140,6 @@ class Snippets(QDialog):
         self.edit.setPlaceholderText("python code")
         self.resetting = False
         self.columns = 3
-        self.context = context
 
         self.keySequenceEdit = QKeySequenceEdit(self)
         self.currentHotkey = QKeySequence()
@@ -183,6 +178,7 @@ class Snippets(QDialog):
         treeButtons.addWidget(self.newSnippetButton)
         treeButtons.addWidget(self.deleteSnippetButton)
         treeLayout.addLayout(treeButtons)
+        treeLayout.addStretch()
         treeWidget = QWidget()
         treeWidget.setLayout(treeLayout)
 
@@ -204,6 +200,7 @@ class Snippets(QDialog):
         vlayout.addLayout(description)
         vlayout.addWidget(self.edit)
         vlayout.addLayout(buttons)
+        vlayout.addStretch()
         vlayoutWidget.setLayout(vlayout)
 
         hsplitter = QSplitter()
@@ -253,6 +250,18 @@ class Snippets(QDialog):
         else:
             self.readOnly(True)
 
+    def shouldBeVisible(self, view_frame):
+        if view_frame is None:
+            return False
+        else:
+            return True
+
+    def contextMenuEvent(self, event):
+        self.m_contextMenuManager.show(self.m_menu, self.actionHandler)
+
+    @staticmethod
+    def create_widget(name, parent, data = None):
+        return Snippets(parent, name, data)
 
     @staticmethod
     def registerAllSnippets():
@@ -403,9 +412,6 @@ class Snippets(QDialog):
         self.registerAllSnippets()
 
     def run(self):
-        if self.context == None:
-            log_warn("Cannot run snippets outside of the UI at this time.")
-            return
         if self.snippetChanged():
             question = QMessageBox.question(self, self.tr("Confirm"), self.tr("You have unsaved changes, must save first. Save?"))
             if (question == QMessageBox.StandardButton.No):
@@ -413,7 +419,7 @@ class Snippets(QDialog):
             else:
                 self.save()
         actionText = actionFromSnippet(self.currentFile, self.snippetDescription.text())
-        UIActionHandler.globalActions().executeAction(actionText, self.context)
+        UIActionHandler.globalActions().executeAction(actionText)
 
         log_debug("Saving snippet %s" % self.currentFile)
         outputSnippet = codecs.open(self.currentFile, "w", "utf-8")
@@ -427,10 +433,11 @@ class Snippets(QDialog):
         self.keySequenceEdit.clear()
 
 
-def launchPlugin(context):
-    snippets = Snippets(context)
-    snippets.exec_()
-
+def addSnippetDock():
+    dock_handler = DockHandler.getActiveDockHandler()
+    parent = dock_handler.parent()
+    dock_widget = Snippets.create_widget("Snippets Editor", parent)
+    dock_handler.addDockWidget(dock_widget, Qt.BottomDockWidgetArea, Qt.Horizontal, True, False)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
@@ -439,6 +446,4 @@ if __name__ == '__main__':
     sys.exit(app.exec_())
 else:
     Snippets.registerAllSnippets()
-    UIAction.registerAction("Snippets\\Snippet Editor...")
-    UIActionHandler.globalActions().bindAction("Snippets\\Snippet Editor...", UIAction(launchPlugin))
-    Menu.mainMenu("Tools").addAction("Snippets\\Snippet Editor...", "Snippet")
+    addSnippetDock()
