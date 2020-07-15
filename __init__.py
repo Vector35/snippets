@@ -178,7 +178,6 @@ class Snippets(QWidget, DockContextHandler):
         treeButtons.addWidget(self.newSnippetButton)
         treeButtons.addWidget(self.deleteSnippetButton)
         treeLayout.addLayout(treeButtons)
-        treeLayout.addStretch()
         treeWidget = QWidget()
         treeWidget.setLayout(treeLayout)
 
@@ -200,7 +199,6 @@ class Snippets(QWidget, DockContextHandler):
         vlayout.addLayout(description)
         vlayout.addWidget(self.edit)
         vlayout.addLayout(buttons)
-        vlayout.addStretch()
         vlayoutWidget.setLayout(vlayout)
 
         hsplitter = QSplitter()
