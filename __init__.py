@@ -12,7 +12,7 @@ from PySide2.QtCore import (QDir, QObject, Qt, QFileInfo, QItemSelectionModel, Q
 from PySide2.QtGui import (QFont, QFontMetrics, QDesktopServices, QKeySequence, QIcon)
 from binaryninja import user_plugin_path
 from binaryninja.plugin import PluginCommand, MainThreadActionHandler
-from binaryninja.mainthread import execute_on_main_thread
+from binaryninja.mainthread import execute_on_main_thread_and_wait
 from binaryninja.log import (log_error, log_debug)
 from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, DockHandler,
      DockContextHandler, getThemeColor, ThemeColor)
@@ -63,7 +63,7 @@ def actionFromSnippet(snippetName, snippetDescription):
         return "Snippets\\" + snippetDescription
 
 
-def executeSnippet(code):
+def executeSnippet(code, actionText):
     snippetGlobals = {}
     dock = DockHandler.getActiveDockHandler()
     viewFrame = dock.getViewFrame()
@@ -71,6 +71,8 @@ def executeSnippet(code):
     context = viewInterface.actionContext()
     snippetGlobals['current_view'] = context.binaryView
     snippetGlobals['bv'] = context.binaryView
+    if context.binaryView:
+        context.binaryView.session_data['lastSnippet'] = actionText
     if not context.function:
         if not context.lowLevelILFunction:
             if not context.mediumLevelILFunction:
@@ -111,8 +113,8 @@ def executeSnippet(code):
         context.binaryView.file.navigate(context.binaryView.file.view, snippetGlobals['current_address'])
 
 
-def makeSnippetFunction(code):
-    return lambda context: executeSnippet(code)
+def makeSnippetFunction(code, actionText):
+    return lambda context: executeSnippet(code, actionText)
 
 class Snippets(QWidget, DockContextHandler):
 
@@ -266,7 +268,7 @@ class Snippets(QWidget, DockContextHandler):
     @staticmethod
     def registerAllSnippets():
         for action in list(filter(lambda x: x.startswith("Snippets\\"), UIAction.getAllRegisteredActions())):
-            if action == "Snippets\\Snippet Editor...":
+            if action == "Snippets\\Snippet Editor..." or action == "Snippets\\Run Last Snippet":
                 continue
             UIActionHandler.globalActions().unbindAction(action)
             Menu.mainMenu("Tools").removeAction(action)
@@ -281,7 +283,7 @@ class Snippets(QWidget, DockContextHandler):
                     UIAction.registerAction(actionText)
                 else:
                     UIAction.registerAction(actionText, snippetKeys)
-                UIActionHandler.globalActions().bindAction(actionText, UIAction(makeSnippetFunction(snippetCode)))
+                UIActionHandler.globalActions().bindAction(actionText, UIAction(makeSnippetFunction(snippetCode, actionText)))
                 Menu.mainMenu("Tools").addAction(actionText, "Snippets")
 
     def clearSelection(self):
@@ -432,6 +434,13 @@ class Snippets(QWidget, DockContextHandler):
     def clearHotkey(self):
         self.keySequenceEdit.clear()
 
+def runLastSnippet(ctx):
+    if ctx.binaryView.session_data.get('lastSnippet') == None:
+        return
+    lastAction = ctx.binaryView.session_data['lastSnippet']
+    if not UIAction.isActionRegistered(lastAction):
+        return
+    execute_on_main_thread_and_wait(lambda: UIActionHandler().actionHandlerFromWidget(DockHandler.getActiveDockHandler().parent()).executeAction(lastAction))
 
 def addSnippetDock():
     dock_handler = DockHandler.getActiveDockHandler()
@@ -446,4 +455,6 @@ if __name__ == '__main__':
     sys.exit(app.exec_())
 else:
     Snippets.registerAllSnippets()
+    UIAction.registerAction("Snippets\\Run Last Snippet", "Meta+Alt+S")
+    UIActionHandler.globalActions().bindAction("Snippets\\Run Last Snippet", UIAction(runLastSnippet))
     addSnippetDock()
