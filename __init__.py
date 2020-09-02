@@ -157,7 +157,7 @@ class Snippets(QWidget, DockContextHandler):
         font = getMonospaceFont(self)
         self.edit.setFont(font)
         font = QFontMetrics(font)
-        self.edit.setTabStopWidth(4 * font.width(' ')); #TODO, replace with settings API
+        self.edit.setTabStopWidth(4 * font.width(' ')) #TODO, replace with settings API
 
         #Files
         self.files = QFileSystemModel()
@@ -307,7 +307,7 @@ class Snippets(QWidget, DockContextHandler):
 
     def browseSnippets(self):
         url = QUrl.fromLocalFile(snippetPath)
-        QDesktopServices.openUrl(url);
+        QDesktopServices.openUrl(url)
 
     def newFolder(self):
         (folderName, ok) = QInputDialog.getText(self, self.tr("Folder Name"), self.tr("Folder Name: "))
@@ -440,7 +440,7 @@ def runLastSnippet(ctx):
     lastAction = ctx.binaryView.session_data['lastSnippet']
     if not UIAction.isActionRegistered(lastAction):
         return
-    execute_on_main_thread_and_wait(lambda: UIActionHandler().actionHandlerFromWidget(DockHandler.getActiveDockHandler().parent()).executeAction(lastAction))
+    execute_on_main_thread_and_wait(lambda: UIActionHandler().executeAction(lastAction))
 
 def addSnippetDock():
     dock_handler = DockHandler.getActiveDockHandler()
