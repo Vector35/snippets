@@ -37,7 +37,8 @@ def includeWalk(dir, includeExt):
 
 def loadSnippetFromFile(snippetPath):
     try:
-        snippetText = codecs.open(snippetPath, 'r', "utf-8").readlines()
+        with codecs.open(snippetPath, 'r', 'utf-8') as snippetFile:
+            snippetText = snippetFile.readlines()
     except:
         return ("", "", "")
     if (len(snippetText) < 3):
