@@ -14,8 +14,7 @@ from binaryninja import user_plugin_path
 from binaryninja.plugin import PluginCommand, MainThreadActionHandler
 from binaryninja.mainthread import execute_on_main_thread
 from binaryninja.log import (log_error, log_debug)
-from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, DockHandler,
-     getThemeColor, ThemeColor)
+from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, DockHandler)
 import numbers
 from .QCodeEditor import QCodeEditor, PythonHighlighter
 
@@ -158,7 +157,7 @@ class Snippets(QDialog):
         font = getMonospaceFont(self)
         self.edit.setFont(font)
         font = QFontMetrics(font)
-        self.edit.setTabStopWidth(4 * font.width(' ')); #TODO, replace with settings API
+        self.edit.setTabStopWidth(4 * font.width(' ')) #TODO, replace with settings API
 
         #Files
         self.files = QFileSystemModel()
@@ -296,7 +295,7 @@ class Snippets(QDialog):
 
     def browseSnippets(self):
         url = QUrl.fromLocalFile(snippetPath)
-        QDesktopServices.openUrl(url);
+        QDesktopServices.openUrl(url)
 
     def newFolder(self):
         (folderName, ok) = QInputDialog.getText(self, self.tr("Folder Name"), self.tr("Folder Name: "))
