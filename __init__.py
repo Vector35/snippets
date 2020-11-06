@@ -62,18 +62,15 @@ def actionFromSnippet(snippetName, snippetDescription):
     else:
         return "Snippets\\" + snippetDescription
 
-
-def executeSnippet(code, context):
+def setupGlobals(context):
     snippetGlobals = {}
     if context.binaryView == None:
         dock = DockHandler.getActiveDockHandler()
         if not dock:
-            log_error("Snippet triggered with no context and no dock handler. This should not happen. Please report reproduction steps if possible.")
-            return
+            return snippetGlobals
         viewFrame = dock.getViewFrame()
         if not viewFrame:
-            log_error("Snippet triggered with no context and no view frame. Snippets require at least one open binary.")
-            return
+            return snippetGlobals
         viewInterface = viewFrame.getCurrentViewInterface()
         context.binaryView = viewInterface.getData()
     snippetGlobals['current_view'] = context.binaryView
@@ -109,12 +106,17 @@ def executeSnippet(code, context):
     else:
         snippetGlobals['current_selection'] = None
     snippetGlobals['uicontext'] = context
+    return snippetGlobals
+
+
+def executeSnippet(code, context):
+    snippetGlobals = setupGlobals(context)
 
     exec("from binaryninja import *", snippetGlobals)
     exec(code, snippetGlobals)
-    if snippetGlobals['here'] != context.address:
+    if hasattr(snippetGlobals, "here") and snippetGlobals['here'] != context.address:
         context.binaryView.file.navigate(context.binaryView.file.view, snippetGlobals['here'])
-    if snippetGlobals['current_address'] != context.address:
+    if hasattr(snippetGlobals, "current_address") and snippetGlobals['current_address'] != context.address:
         context.binaryView.file.navigate(context.binaryView.file.view, snippetGlobals['current_address'])
 
 
