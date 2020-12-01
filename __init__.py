@@ -78,6 +78,7 @@ def setupGlobals(context):
     if not context.function:
         if not context.lowLevelILFunction:
             if not context.mediumLevelILFunction:
+                snippetGlobals['current_hlil'] = None
                 snippetGlobals['current_mlil'] = None
                 snippetGlobals['current_function'] = None
                 snippetGlobals['current_llil'] = None
@@ -85,13 +86,16 @@ def setupGlobals(context):
                 snippetGlobals['current_mlil'] = context.mediumLevelILFunction
                 snippetGlobals['current_function'] = context.mediumLevelILFunction.source_function
                 snippetGlobals['current_llil'] = context.mediumLevelILFunction.source_function.llil
+                snippetGlobals['current_hlil'] = context.mediumLevelILFunction.source_function.hlil
         else:
             snippetGlobals['current_llil'] = context.lowLevelILFunction
             snippetGlobals['current_function'] = context.lowLevelILFunction.source_function
             snippetGlobals['current_mlil'] = context.lowLevelILFunction.source_function.mlil
+            snippetGlobals['current_hlil'] = context.lowLevelILFunction.source_function.hlil
     else:
         snippetGlobals['current_function'] = context.function
         snippetGlobals['current_mlil'] = context.function.mlil
+        snippetGlobals['current_hlil'] = context.function.hlil
         snippetGlobals['current_llil'] = context.function.llil
         snippetGlobals['current_token'] = context.function.llil
 
