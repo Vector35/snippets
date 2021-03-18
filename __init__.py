@@ -4,17 +4,26 @@ import sys
 import os
 import re
 import codecs
-from PySide2.QtWidgets import (QLineEdit, QPushButton, QApplication, QTextEdit, QWidget,
-     QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
-     QInputDialog, QMessageBox, QHeaderView, QMenu, QAction, QKeySequenceEdit,
-     QPlainTextEdit)
-from PySide2.QtCore import (QDir, QObject, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl)
-from PySide2.QtGui import (QFont, QFontMetrics, QDesktopServices, QKeySequence, QIcon)
+import binaryninjaui
+from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, DockHandler)
+if "qt_major_version" in binaryninjaui.__dict__ and binaryninjaui.qt_major_version == 6:
+    from PySide6.QtWidgets import (QLineEdit, QPushButton, QApplication, QTextEdit, QWidget,
+         QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
+         QInputDialog, QMessageBox, QHeaderView, QMenu, QKeySequenceEdit,
+         QPlainTextEdit)
+    from PySide6.QtCore import (QDir, QObject, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl)
+    from PySide6.QtGui import (QAction, QFont, QFontMetrics, QDesktopServices, QKeySequence, QIcon)
+else:
+    from PySide2.QtWidgets import (QLineEdit, QPushButton, QApplication, QTextEdit, QWidget,
+         QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
+         QInputDialog, QMessageBox, QHeaderView, QMenu, QKeySequenceEdit, QAction,
+         QPlainTextEdit)
+    from PySide2.QtCore import (QDir, QObject, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl)
+    from PySide2.QtGui import (QFont, QFontMetrics, QDesktopServices, QKeySequence, QIcon)
 from binaryninja import user_plugin_path
 from binaryninja.plugin import PluginCommand, MainThreadActionHandler
 from binaryninja.mainthread import execute_on_main_thread
 from binaryninja.log import (log_error, log_debug)
-from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, DockHandler)
 import numbers
 from .QCodeEditor import QCodeEditor, PythonHighlighter
 
@@ -164,7 +173,7 @@ class Snippets(QDialog):
         font = getMonospaceFont(self)
         self.edit.setFont(font)
         font = QFontMetrics(font)
-        self.edit.setTabStopWidth(4 * font.width(' ')) #TODO, replace with settings API
+        self.edit.setTabStopDistance(4 * font.horizontalAdvance(' ')) #TODO, replace with settings API
 
         #Files
         self.files = QFileSystemModel()
