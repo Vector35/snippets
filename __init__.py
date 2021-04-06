@@ -24,8 +24,20 @@ from binaryninja import user_plugin_path
 from binaryninja.plugin import PluginCommand, MainThreadActionHandler
 from binaryninja.mainthread import execute_on_main_thread
 from binaryninja.log import (log_error, log_debug)
+from binaryninja.settings import Settings
 import numbers
-from .QCodeEditor import QCodeEditor
+from .QCodeEditor import QCodeEditor, Pylighter
+
+Settings().register_group("snippest", "Snippets")
+Settings().register_setting("snippets.syntaxHighlight", """
+    {
+        "title" : "Syntax highlighting for snippets",
+        "type" : "boolean",
+        "default" : true,
+        "description" : "Whether to syntax highlight (may be performance problems with very large snippets and the current highlighting implementation.)"
+    }
+    """)
+
 
 snippetPath = os.path.realpath(os.path.join(user_plugin_path(), "..", "snippets"))
 try:
@@ -155,7 +167,10 @@ class Snippets(QDialog):
         self.browseButton.setIcon(QIcon.fromTheme("edit-undo"))
         self.deleteSnippetButton = QPushButton("Delete")
         self.newSnippetButton = QPushButton("New Snippet")
-        self.edit = QCodeEditor()
+        if Settings().get_bool("snippets.syntaxHighlight"):
+            self.edit = QCodeEditor(SyntaxHighlighter=Pylighter)
+        else:
+            self.edit = QCodeEditor(SyntaxHighlighter=None)
         self.edit.setPlaceholderText("python code")
         self.resetting = False
         self.columns = 3
