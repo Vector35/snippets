@@ -1,385 +1,240 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 '''
 Licensed under the terms of the MIT License
+
+Re-written for Snippet Editor by Jordan Wiens (https://github.com/psifertex/)
+With some original components (line numbers) based on: 
+
 https://github.com/luchko/QCodeEditor
 @author: Ivan Luchko (luchko.ivan@gmail.com)
-
-Python Highlighting added by:
-https://github.com/unihernandez22/QCodeEditor
-@author: unihernandez22
-
-Adapted to Binary Ninja by:
-@author: Jordan Wiens (https://github.com/psifertex)
-
-Integrating syntax highlighting from:
-https://wiki.python.org/moin/PyQt/Python%20syntax%20highlighting
-Released under the Modified BSD License: http://directory.fsf.org/wiki/License:BSD_3Clause
-
-Note that this will not be merged back to the parent repositories as it's been
-modified to be heavily dependent on the BN theme system.
 '''
 
 import binaryninjaui
+from binaryninja import log_warn
 if "qt_major_version" in binaryninjaui.__dict__ and binaryninjaui.qt_major_version == 6:
     from PySide6.QtCore import Qt, QRect, QRegularExpression
     from PySide6.QtWidgets import QWidget, QTextEdit, QPlainTextEdit
-    from PySide6.QtGui import (QPainter, QFont, QSyntaxHighlighter, QTextFormat, QTextCharFormat)
+    from PySide6.QtGui import (QPainter, QFont, QSyntaxHighlighter, QTextFormat, QTextCharFormat, QColor)
 else:
     from PySide2.QtCore import Qt, QRect, QRegularExpression
     from PySide2.QtWidgets import QWidget, QTextEdit, QPlainTextEdit
-    from PySide2.QtGui import (QPainter, QFont, QSyntaxHighlighter, QTextFormat, QTextCharFormat)
+    from PySide2.QtGui import (QPainter, QFont, QSyntaxHighlighter, QTextFormat, QTextCharFormat, QColor)
 from binaryninjaui import (getMonospaceFont, getThemeColor, ThemeColor)
+from pygments import highlight, token
+from pygments.lexers import *
+from pygments.formatter import Formatter
 
 
-def format(color, style=''):
-	"""Return a QTextCharFormat with the given attributes."""
-	_color = eval('getThemeColor(ThemeColor.%s)' % color)
+def bnformat(color, style=''):
+    """Return a QTextCharFormat with the given attributes."""
+    color = eval('getThemeColor(ThemeColor.%s)' % color)
 
-	_format = QTextCharFormat()
-	_format.setForeground(_color)
-	if 'bold' in style:
-		_format.setFontWeight(QFont.Bold)
-	if 'italic' in style:
-		_format.setFontItalic(True)
+    format = QTextCharFormat()
+    format.setForeground(color)
+    if 'bold' in style:
+        format.setFontWeight(QFont.Bold)
+    if 'italic' in style:
+        format.setFontItalic(True)
 
-	return _format
+    return format
 
-STYLES = {
-	'keyword': format('StackVariableColor'),
-	'operator': format('TokenHighlightColor'),
-	'brace': format('LinearDisassemblySeparatorColor'),
-	'defclass': format('DataSymbolColor'),
-	'string': format('StringColor'),
-	'string2': format('TypeNameColor'),
-	'comment': format('AnnotationColor', 'italic'),
-	'self': format('KeywordColor', 'italic'),
-	'numbers': format('NumberColor'),
-	'numberbar': getThemeColor(ThemeColor.BackgroundHighlightDarkColor),
-	'blockselected': getThemeColor(ThemeColor.TokenHighlightColor),
-	'blocknormal': getThemeColor(ThemeColor.TokenSelectionColor)
+# Most of these aren't needed but after fighting pygments for so long I figure they can't hurt. 
+bnstyles = {
+    'Token.Literal.Number': bnformat('NumberColor'),
+    'Token.Literal.Number.Bin': bnformat('NumberColor'),
+    'Token.Literal.Number.Float': bnformat('NumberColor'),
+    'Token.Literal.Number.Integer': bnformat('NumberColor'),
+    'Token.Literal.Number.Integer.Long': bnformat('NumberColor'),
+    'Token.Literal.Number.Hex': bnformat('NumberColor'),
+    'Token.Literal.Number.Oct': bnformat('NumberColor'),
+
+    'Token.Literal.String': bnformat('StringColor'),
+    'Token.Literal.String.Single': bnformat('StringColor'),
+    'Token.Literal.String.Char': bnformat('StringColor'),
+    'Token.Literal.String.Backtick': bnformat('StringColor'),
+    'Token.Literal.String.Delimiter': bnformat('StringColor'),
+    'Token.Literal.String.Double': bnformat('StringColor'),
+    'Token.Literal.String.Heredoc': bnformat('StringColor'),
+    'Token.Literal.String.Affix': bnformat('StringColor'),
+    'Token.String': bnformat('StringColor'),
+
+    'Token.Comment': bnformat('CommentColor', 'italic'),
+    'Token.Comment.Hashbang': bnformat('CommentColor', 'italic'),
+    'Token.Comment.Single': bnformat('CommentColor', 'italic'),
+    'Token.Comment.Special': bnformat('CommentColor', 'italic'),
+    'Token.Comment.PreprocFile': bnformat('CommentColor', 'italic'),
+    'Token.Comment.Multiline': bnformat('CommentColor', 'italic'),
+
+    'Token.Keyword': bnformat('StackVariableColor'),
+
+    'Token.Operator': bnformat('TokenHighlightColor'),
+    'Token.Punctuation': bnformat('LinearDisassemblySeparatorColor'),
+
+    #This is the most important and hardest to get right. No way to get theme palettes!
+    'Token.Name': bnformat('OutlineColor'), 
+
+    'Token.Name.Namespace': bnformat('OutlineColor'),
+
+    'Token.Name.Variable': bnformat('DataSymbolColor'),
+    'Token.Name.Class': bnformat('DataSymbolColor'),
+    'Token.Name.Constant': bnformat('DataSymbolColor'),
+    'Token.Name.Entity': bnformat('DataSymbolColor'),
+    'Token.Name.Other': bnformat('DataSymbolColor'),
+    'Token.Name.Tag': bnformat('DataSymbolColor'),
+    'Token.Name.Decorator': bnformat('DataSymbolColor'),
+    'Token.Name.Label': bnformat('DataSymbolColor'),
+    'Token.Name.Variable.Magic': bnformat('DataSymbolColor'),
+    'Token.Name.Variable.Instance': bnformat('DataSymbolColor'),
+    'Token.Name.Variable.Class': bnformat('DataSymbolColor'),
+    'Token.Name.Variable.Global': bnformat('DataSymbolColor'),
+    'Token.Name.Property': bnformat('DataSymbolColor'),
+    'Token.Name.Function': bnformat('DataSymbolColor'),
+    'Token.Name.Builtin': bnformat('ImportColor'),
+    'Token.Name.Builtin.Pseudo': bnformat('ImportColor'),
+
+    'Token.Escape': bnformat('ImportColor'),
+
+    'Token.Keyword': bnformat('GotoLabelColor'),
+    'Token.Operator.Word': bnformat('GotoLabelColor'),
+
+    'numberBar': getThemeColor(ThemeColor.BackgroundHighlightDarkColor),
+    'blockSelected': getThemeColor(ThemeColor.TokenHighlightColor),
+    'blockNormal': getThemeColor(ThemeColor.TokenSelectionColor),
 }
 
-class PythonHighlighter (QSyntaxHighlighter):
-	"""Syntax highlighter for the Python language.
-	"""
-	# Python keywords
-	keywords = [
-		'and', 'assert', 'break', 'class', 'continue', 'def',
-		'del', 'elif', 'else', 'except', 'exec', 'finally',
-		'for', 'from', 'global', 'if', 'import', 'in',
-		'is', 'lambda', 'not', 'or', 'pass', 'print',
-		'raise', 'return', 'try', 'while', 'yield',
-		'None', 'True', 'False',
-	]
+class QFormatter(Formatter):
 
-	# Python operators
-	operators = [
-		'=',
-		# Comparison
-		'==', '!=', '<', '<=', '>', '>=',
-		# Arithmetic
-		'\+', '-', '\*', '/', '//', '\%', '\*\*',
-		# In-place
-		'\+=', '-=', '\*=', '/=', '\%=',
-		# Bitwise
-		'\^', '\|', '\&', '\~', '>>', '<<',
-	]
+    def __init__(self):
+        Formatter.__init__(self)
+        self.pygstyles={}
+        for token, style in self.style:
+            tokenname = str(token)
+            if tokenname in bnstyles.keys():
+                self.pygstyles[str(token)]=bnstyles[tokenname]
+                #log_warn("MATCH: %s with %s" % (tokenname, str(token)))
+            else:
+                self.pygstyles[str(token)]=bnstyles['Token.Name']
+                #log_warn("NONE: %s with %s" % (tokenname, str(token)))
 
-	# Python braces
-	braces = [
-		'\{', '\}', '\(', '\)', '\[', '\]',
-	]
-	def __init__(self, document):
-		QSyntaxHighlighter.__init__(self, document)
+    def format(self, tokensource, outfile):
+        self.data=[]
+        for token, value in tokensource:
+            self.data.extend([self.pygstyles[str(token)],]*len(value))
 
-		# Multi-line strings (expression, flag, style)
-		# FIXME: The triple-quotes in these two lines will mess up the
-		# syntax highlighting from this point onward
-		self.tri_single = (QRegularExpression("'''"), 1, STYLES['string2'])
-		self.tri_double = (QRegularExpression('"""'), 2, STYLES['string2'])
+class Pylighter(QSyntaxHighlighter):
 
-		rules = []
+    def __init__(self, parent, lang):
+        QSyntaxHighlighter.__init__(self, parent)
+        self.formatter=QFormatter()
+        self.lexer=get_lexer_by_name(lang)
 
-		# Keyword, operator, and brace rules
-		rules += [(r'\b%s\b' % w, 0, STYLES['keyword'])
-			for w in PythonHighlighter.keywords]
-		rules += [(r'%s' % o, 0, STYLES['operator'])
-			for o in PythonHighlighter.operators]
-		rules += [(r'%s' % b, 0, STYLES['brace'])
-			for b in PythonHighlighter.braces]
-
-		# All other rules
-		rules += [
-			# 'self'
-			(r'\bself\b', 0, STYLES['self']),
-
-			# Double-quoted string, possibly containing escape sequences
-			(r'"[^"\\]*(\\.[^"\\]*)*"', 0, STYLES['string']),
-			# Single-quoted string, possibly containing escape sequences
-			(r"'[^'\\]*(\\.[^'\\]*)*'", 0, STYLES['string']),
-
-			# 'def' followed by an identifier
-			(r'\bdef\b\s*(\w+)', 1, STYLES['defclass']),
-			# 'class' followed by an identifier
-			(r'\bclass\b\s*(\w+)', 1, STYLES['defclass']),
-
-			# From '#' until a newline
-			(r'#[^\n]*', 0, STYLES['comment']),
-
-			# Numeric literals
-			(r'\b[+-]?[0-9]+[lL]?\b', 0, STYLES['numbers']),
-			(r'\b[+-]?0[xX][0-9A-Fa-f]+[lL]?\b', 0, STYLES['numbers']),
-			(r'\b[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?\b', 0, STYLES['numbers']),
-		]
-
-		# Build a QRegExp for each pattern
-		self.rules = [(QRegularExpression(pat), index, fmt)
-			for (pat, index, fmt) in rules]
-
-
-	def highlightBlock(self, text):
-		"""Apply syntax highlighting to the given block of text.
-		"""
-		# Do other syntax formatting
-		for expression, nth, format in self.rules:
-			index = expression.indexIn(text, 0)
-
-			while index >= 0:
-				# We actually want the index of the nth match
-				index = expression.pos(nth)
-				length = len(expression.cap(nth))
-				self.setFormat(index, length, format)
-				index = expression.indexIn(text, index + length)
-
-		self.setCurrentBlockState(0)
-
-		# Do multi-line strings
-		in_multiline = self.match_multiline(text, *self.tri_single)
-		if not in_multiline:
-			in_multiline = self.match_multiline(text, *self.tri_double)
-
-
-	def match_multiline(self, text, delimiter, in_state, style):
-		"""Do highlighting of multi-line strings. ``delimiter`` should be a
-		``QRegExp`` for triple-single-quotes or triple-double-quotes, and
-		``in_state`` should be a unique integer to represent the corresponding
-		state changes when inside those strings. Returns True if we're still
-		inside a multi-line string when this function is finished.
-		"""
-		# If inside triple-single quotes, start at 0
-		if self.previousBlockState() == in_state:
-			start = 0
-			add = 0
-		# Otherwise, look for the delimiter on this line
-		else:
-			start = delimiter.indexIn(text)
-			# Move past this match
-			add = delimiter.matchedLength()
-
-		# As long as there's a delimiter match on this line...
-		while start >= 0:
-			# Look for the ending delimiter
-			end = delimiter.indexIn(text, start + add)
-			# Ending delimiter on this line?
-			if end >= add:
-				length = end - start + add + delimiter.matchedLength()
-				self.setCurrentBlockState(0)
-			# No; multi-line string
-			else:
-				self.setCurrentBlockState(in_state)
-				length = len(text) - start + add
-			# Apply formatting
-			self.setFormat(start, length, style)
-			# Look for the next match
-			start = delimiter.indexIn(text, start + length)
-
-		# Return True if still inside a multi-line string, False otherwise
-		if self.currentBlockState() == in_state:
-			return True
-		else:
-			return False
+    def highlightBlock(self, text):
+        cb = self.currentBlock()
+        p = cb.position()
+        text=self.document().toPlainText()
+        highlight(text,self.lexer,self.formatter)
+        
+        #dirty, dirty hack
+        for i in range(len(text)):
+            try:
+                self.setFormat(i,1,self.formatter.data[p+i])
+            except IndexError:
+                pass
 
 
 class QCodeEditor(QPlainTextEdit):
-	'''
-	QCodeEditor inherited from QPlainTextEdit providing:
+    class NumberBar(QWidget):
 
-		numberBar - set by DISPLAY_LINE_NUMBERS flag equals True
-		curent line highligthing - set by HIGHLIGHT_CURRENT_LINE flag equals True
-		setting up QSyntaxHighlighter
+        def __init__(self, editor):
+            QWidget.__init__(self, editor)
+            global bnstyles
 
-	references:
-		https://john.nachtimwald.com/2009/08/19/better-qplaintextedit-with-line-numbers/
-		http://doc.qt.io/qt-5/qtwidgets-widgets-codeeditor-example.html
+            self.editor = editor
+            self.editor.blockCountChanged.connect(self.updateWidth)
+            self.editor.updateRequest.connect(self.updateContents)
+            self.font = QFont()
+            self.numberBarColor = bnstyles["numberBar"]
 
-	'''
-	class NumberBar(QWidget):
-		'''class that deifnes textEditor numberBar'''
+        def paintEvent(self, event):
+            painter = QPainter(self)
+            painter.fillRect(event.rect(), self.numberBarColor)
 
-		def __init__(self, editor):
-			QWidget.__init__(self, editor)
+            block = self.editor.firstVisibleBlock()
 
-			self.editor = editor
-			self.editor.blockCountChanged.connect(self.updateWidth)
-			self.editor.updateRequest.connect(self.updateContents)
-			self.font = QFont()
-			self.numberBarColor = STYLES["numberbar"]
+            # Iterate over all visible text blocks in the document.
+            while block.isValid():
+                blockNumber = block.blockNumber()
+                block_top = self.editor.blockBoundingGeometry(block).translated(self.editor.contentOffset()).top()
 
-		def paintEvent(self, event):
+                # Check if the position of the block is out side of the visible area.
+                if not block.isVisible() or block_top >= event.rect().bottom():
+                    break
 
-			painter = QPainter(self)
-			painter.fillRect(event.rect(), self.numberBarColor)
+                # We want the line number for the selected line to be bold.
+                if blockNumber == self.editor.textCursor().blockNumber():
+                    self.font.setBold(True)
+                    painter.setPen(bnstyles["blockSelected"])
+                else:
+                    self.font.setBold(False)
+                    painter.setPen(bnstyles["blockNormal"])
+                painter.setFont(self.font)
 
-			block = self.editor.firstVisibleBlock()
+                # Draw the line number right justified at the position of the line.
+                paint_rect = QRect(0, block_top, self.width(), self.editor.fontMetrics().height())
+                painter.drawText(paint_rect, Qt.AlignLeft, str(blockNumber+1))
 
-			# Iterate over all visible text blocks in the document.
-			while block.isValid():
-				blockNumber = block.blockNumber()
-				block_top = self.editor.blockBoundingGeometry(block).translated(self.editor.contentOffset()).top()
+                block = block.next()
 
-				# Check if the position of the block is out side of the visible area.
-				if not block.isVisible() or block_top >= event.rect().bottom():
-					break
+            painter.end()
 
-				# We want the line number for the selected line to be bold.
-				if blockNumber == self.editor.textCursor().blockNumber():
-					self.font.setBold(True)
-					painter.setPen(STYLES["blockselected"])
-				else:
-					self.font.setBold(False)
-					painter.setPen(STYLES["blocknormal"])
-				painter.setFont(self.font)
+            QWidget.paintEvent(self, event)
 
-				# Draw the line number right justified at the position of the line.
-				paint_rect = QRect(0, block_top, self.width(), self.editor.fontMetrics().height())
-				painter.drawText(paint_rect, Qt.AlignLeft, str(blockNumber+1))
+        def getWidth(self):
+            count = self.editor.blockCount()
+            width = self.fontMetrics().horizontalAdvance(str(count)) + 10
+            return width
 
-				block = block.next()
+        def updateWidth(self):
+            width = self.getWidth()
+            if self.width() != width:
+                self.setFixedWidth(width)
+                self.editor.setViewportMargins(width, 0, 0, 0)
 
-			painter.end()
+        def updateContents(self, rect, scroll):
+            if scroll:
+                self.scroll(0, scroll)
+            else:
+                self.update(0, rect.y(), self.width(), rect.height())
 
-			QWidget.paintEvent(self, event)
-
-		def getWidth(self):
-			count = self.editor.blockCount()
-			width = self.fontMetrics().horizontalAdvance(str(count)) + 10
-			return width
-
-		def updateWidth(self):
-			width = self.getWidth()
-			if self.width() != width:
-				self.setFixedWidth(width)
-				self.editor.setViewportMargins(width, 0, 0, 0);
-
-		def updateContents(self, rect, scroll):
-			if scroll:
-				self.scroll(0, scroll)
-			else:
-				self.update(0, rect.y(), self.width(), rect.height())
-
-			if rect.contains(self.editor.viewport().rect()):
-				fontSize = self.editor.currentCharFormat().font().pointSize()
-				self.font.setPointSize(fontSize)
-				self.font.setStyle(QFont.StyleNormal)
-				self.updateWidth()
+            if rect.contains(self.editor.viewport().rect()):
+                fontSize = self.editor.currentCharFormat().font().pointSize()
+                self.font.setPointSize(fontSize)
+                self.font.setStyle(QFont.StyleNormal)
+                self.updateWidth()
 
 
-	def __init__(self, DISPLAY_LINE_NUMBERS=True, HIGHLIGHT_CURRENT_LINE=True,
-				 SyntaxHighlighter=None, *args):
-		'''
-		Parameters
-		----------
-		DISPLAY_LINE_NUMBERS : bool
-			switch on/off the presence of the lines number bar
-		HIGHLIGHT_CURRENT_LINE : bool
-			switch on/off the current line highliting
-		SyntaxHighlighter : QSyntaxHighlighter
-			should be inherited from QSyntaxHighlighter
+    def __init__(self, DISPLAY_LINE_NUMBERS=True, HIGHLIGHT_CURRENT_LINE=True,
+                 SyntaxHighlighter=Pylighter, lang="python", *args):
+        super(QCodeEditor, self).__init__()
 
-		'''
-		super(QCodeEditor, self).__init__()
+        self.setFont(QFont("Ubuntu Mono", 11))
+        self.setLineWrapMode(QPlainTextEdit.NoWrap)
 
-		self.setFont(QFont("Ubuntu Mono", 11))
-		self.setLineWrapMode(QPlainTextEdit.NoWrap)
+        self.DISPLAY_LINE_NUMBERS = DISPLAY_LINE_NUMBERS
 
-		self.DISPLAY_LINE_NUMBERS = DISPLAY_LINE_NUMBERS
+        if DISPLAY_LINE_NUMBERS:
+            self.number_bar = self.NumberBar(self)
 
-		if DISPLAY_LINE_NUMBERS:
-			self.number_bar = self.NumberBar(self)
+        if SyntaxHighlighter is not None: # add highlighter to textdocument
+            self.highlighter = SyntaxHighlighter(self.document(), lang)
 
-		if HIGHLIGHT_CURRENT_LINE:
-			self.currentLineNumber = None
-			self.currentLineColor = STYLES['currentLine']
-			self.cursorPositionChanged.connect(self.highligtCurrentLine)
+    def resizeEvent(self, *e):
+        '''overload resizeEvent handler'''
 
-		if SyntaxHighlighter is not None: # add highlighter to textdocument
-		   self.highlighter = SyntaxHighlighter(self.document())
+        if self.DISPLAY_LINE_NUMBERS:   # resize number_bar widget
+            cr = self.contentsRect()
+            rec = QRect(cr.left(), cr.top(), self.number_bar.getWidth(), cr.height())
+            self.number_bar.setGeometry(rec)
 
-	def resizeEvent(self, *e):
-		'''overload resizeEvent handler'''
-
-		if self.DISPLAY_LINE_NUMBERS:   # resize number_bar widget
-			cr = self.contentsRect()
-			rec = QRect(cr.left(), cr.top(), self.number_bar.getWidth(), cr.height())
-			self.number_bar.setGeometry(rec)
-
-		QPlainTextEdit.resizeEvent(self, *e)
-
-	def highligtCurrentLine(self):
-		newCurrentLineNumber = self.textCursor().blockNumber()
-		if newCurrentLineNumber != self.currentLineNumber:
-			self.currentLineNumber = newCurrentLineNumber
-			hi_selection = QTextEdit.ExtraSelection()
-			hi_selection.format.setBackground(self.currentLineColor)
-			hi_selection.format.setProperty(QTextFormat.FullWidthSelection, True)
-			hi_selection.cursor = self.textCursor()
-			hi_selection.cursor.clearSelection()
-			self.setExtraSelections([hi_selection])
-
-##############################################################################
-
-if __name__ == '__main__':
-
-	# TESTING
-
-	def run_test():
-
-		from PySide2.QtGui import QApplication
-		import sys
-
-		app = QApplication([])
-
-		editor = QCodeEditor(DISPLAY_LINE_NUMBERS=True,
-							 HIGHLIGHT_CURRENT_LINE=True,
-							 SyntaxHighlighter=PythonHighlighter)
-
-# 		text = '''<FINITELATTICE>
-#   <LATTICE name="myLattice">
-# 	<BASIS>
-# 	  <VECTOR>1.0 0.0 0.0</VECTOR>
-# 	  <VECTOR>0.0 1.0 0.0</VECTOR>
-# 	</BASIS>
-#   </LATTICE>
-#   <PARAMETER name="L" />
-#   <PARAMETER default="L" name="W" />
-#   <EXTENT dimension="1" size="L" />
-#   <EXTENT dimension="2" size="W" />
-#   <BOUNDARY type="periodic" />
-# </FINITELATTICE>
-# '''
-		text = """\
-def hello(text):
-	print(text)
-
-hello('Hello World')
-
-# Comment"""
-		editor.setPlainText(text)
-		editor.resize(400,250)
-		editor.show()
-
-		sys.exit(app.exec_())
-
-
-	run_test()
+        QPlainTextEdit.resizeEvent(self, *e)

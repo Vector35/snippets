@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import sys
 import os
@@ -25,7 +25,7 @@ from binaryninja.plugin import PluginCommand, MainThreadActionHandler
 from binaryninja.mainthread import execute_on_main_thread
 from binaryninja.log import (log_error, log_debug)
 import numbers
-from .QCodeEditor import QCodeEditor, PythonHighlighter
+from .QCodeEditor import QCodeEditor
 
 snippetPath = os.path.realpath(os.path.join(user_plugin_path(), "..", "snippets"))
 try:
@@ -155,7 +155,7 @@ class Snippets(QDialog):
         self.browseButton.setIcon(QIcon.fromTheme("edit-undo"))
         self.deleteSnippetButton = QPushButton("Delete")
         self.newSnippetButton = QPushButton("New Snippet")
-        self.edit = QCodeEditor(HIGHLIGHT_CURRENT_LINE=False, SyntaxHighlighter=PythonHighlighter)
+        self.edit = QCodeEditor()
         self.edit.setPlaceholderText("python code")
         self.resetting = False
         self.columns = 3
