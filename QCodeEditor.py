@@ -215,10 +215,10 @@ class QCodeEditor(QPlainTextEdit):
 
 
     def __init__(self, DISPLAY_LINE_NUMBERS=True, HIGHLIGHT_CURRENT_LINE=True,
-                 SyntaxHighlighter=Pylighter, lang="python", *args):
+                 SyntaxHighlighter=Pylighter, lang="python", font_size=11, *args):
         super(QCodeEditor, self).__init__()
 
-        self.setFont(QFont("Ubuntu Mono", 11))
+        self.setFont(QFont("Ubuntu Mono", font_size))
         self.setLineWrapMode(QPlainTextEdit.NoWrap)
 
         self.DISPLAY_LINE_NUMBERS = DISPLAY_LINE_NUMBERS
