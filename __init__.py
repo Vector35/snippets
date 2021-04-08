@@ -34,7 +34,8 @@ Settings().register_setting("snippets.syntaxHighlight", """
         "title" : "Syntax highlighting for snippets",
         "type" : "boolean",
         "default" : true,
-        "description" : "Whether to syntax highlight (may be performance problems with very large snippets and the current highlighting implementation.)"
+        "description" : "Whether to syntax highlight (may be performance problems with very large snippets and the current highlighting implementation.)",
+        "ignore" : ["SettingsProjectScope", "SettingsResourceScope"]
     }
     """)
 
