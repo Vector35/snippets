@@ -218,7 +218,9 @@ class QCodeEditor(QPlainTextEdit):
                  SyntaxHighlighter=Pylighter, lang="python", font_size=11, *args):
         super(QCodeEditor, self).__init__()
 
-        self.setFont(QFont("Ubuntu Mono", font_size))
+        font = getMonospaceFont(self)
+        font.setPointSize(font_size)
+        self.setFont(font)
         self.setLineWrapMode(QPlainTextEdit.NoWrap)
 
         self.DISPLAY_LINE_NUMBERS = DISPLAY_LINE_NUMBERS
