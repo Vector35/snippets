@@ -153,7 +153,7 @@ class Snippets(QDialog):
     def __init__(self, context, parent=None):
         super(Snippets, self).__init__(parent)
         # Create widgets
-        self.setWindowModality(Qt.ApplicationModal)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.title = QLabel(self.tr("Snippet Editor"))
         self.saveButton = QPushButton(self.tr("&Save"))
         self.saveButton.setShortcut(QKeySequence(self.tr("Ctrl+S")))
@@ -315,12 +315,19 @@ class Snippets(QDialog):
         self.tree.clearSelection()
         self.currentFile = ""
 
+    def askSave(self):
+        return QMessageBox.question(self, self.tr("Save?"), self.tr("Do you want to save changes to {}?").format(self.currentFileLabel.text()), QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+
     def reject(self):
         self.settings.setValue("ui/snippeteditor/geometry", self.saveGeometry())
 
         if self.snippetChanged():
-            question = QMessageBox.question(self, self.tr("Discard"), self.tr("You have unsaved changes, quit anyway?"))
-            if question != QMessageBox.StandardButton.Yes:
+            save = self.askSave()
+            if save == QMessageBox.Yes:
+                self.save()
+            elif save == QMessageBox.No:
+                pass
+            elif save == QMessageBox.Cancel:
                 return
         self.accept()
 
@@ -358,8 +365,12 @@ class Snippets(QDialog):
         if old and old.length() > 0:
             oldSelection = self.files.filePath(old.indexes()[0])
             if not QFileInfo(oldSelection).isDir() and self.snippetChanged():
-                question = QMessageBox.question(self, self.tr("Discard"), self.tr("Snippet changed. Discard changes?"))
-                if question != QMessageBox.StandardButton.Yes:
+                save = self.askSave()
+                if save == QMessageBox.Yes:
+                    self.save()
+                elif save == QMessageBox.No:
+                    pass
+                elif save == QMessageBox.Cancel:
                     self.resetting = True
                     self.tree.selectionModel().select(old, QItemSelectionModel.ClearAndSelect | QItemSelectionModel.Rows)
                     return False
@@ -376,7 +387,7 @@ class Snippets(QDialog):
         self.readOnly(False)
 
     def newFileDialog(self):
-        (snippetName, ok) = QInputDialog.getText(self, self.tr("Snippet Name"), self.tr("Snippet Name: "))
+        (snippetName, ok) = QInputDialog.getText(self, self.tr("Snippet Name"), self.tr("Snippet Name: "), flags=self.windowFlags())
         if ok and snippetName:
             if not snippetName.endswith(".py"):
                 snippetName += ".py"
@@ -437,11 +448,7 @@ class Snippets(QDialog):
             log_warn("Cannot run snippets outside of the UI at this time.")
             return
         if self.snippetChanged():
-            question = QMessageBox.question(self, self.tr("Confirm"), self.tr("You have unsaved changes, must save first. Save?"))
-            if (question == QMessageBox.StandardButton.No):
-                return
-            else:
-                self.save()
+            self.save()
         actionText = actionFromSnippet(self.currentFile, self.snippetDescription.text())
         UIActionHandler.globalActions().executeAction(actionText, self.context)
 
@@ -457,10 +464,13 @@ class Snippets(QDialog):
         self.keySequenceEdit.clear()
 
 
-def launchPlugin(context):
-    snippets = Snippets(context)
-    snippets.exec_()
+snippets = None
 
+def launchPlugin(context):
+    global snippets
+    if not snippets:
+        snippets = Snippets(context)
+    snippets.show()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
