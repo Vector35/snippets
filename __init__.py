@@ -5,7 +5,7 @@ import os
 import re
 import codecs
 import binaryninjaui
-from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, DockHandler)
+from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, DockHandler, UIContext)
 if "qt_major_version" in binaryninjaui.__dict__ and binaryninjaui.qt_major_version == 6:
     from PySide6.QtWidgets import (QLineEdit, QPushButton, QApplication, QTextEdit, QWidget,
          QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
@@ -86,15 +86,6 @@ def actionFromSnippet(snippetName, snippetDescription):
 
 def setupGlobals(context):
     snippetGlobals = {}
-    if context.binaryView == None:
-        dock = DockHandler.getActiveDockHandler()
-        if not dock:
-            return snippetGlobals
-        viewFrame = dock.getViewFrame()
-        if not viewFrame:
-            return snippetGlobals
-        viewInterface = viewFrame.getCurrentViewInterface()
-        context.binaryView = viewInterface.getData()
     snippetGlobals['current_view'] = context.binaryView
     snippetGlobals['bv'] = context.binaryView
     if not context.function:
@@ -135,7 +126,20 @@ def setupGlobals(context):
     return snippetGlobals
 
 
-def executeSnippet(code, context):
+def executeSnippet(code):
+    #get UI context
+    ctx = UIContext.activeContext()
+    if not ctx:
+        ctx = UIContext.allContexts()[0]
+    handler = ctx.contentActionHandler()
+    context = handler.actionContext()
+    if not context.binaryView: #Not sure if this is still needed
+        dock = DockHandler.getActiveDockHandler()
+        if dock:
+            viewFrame = dock.getViewFrame()
+            if viewFrame:
+                viewInterface = viewFrame.getCurrentViewInterface()
+                context.binaryView = viewInterface.getData()
     snippetGlobals = setupGlobals(context)
 
     exec("from binaryninja import *", snippetGlobals)
@@ -147,7 +151,7 @@ def executeSnippet(code, context):
 
 
 def makeSnippetFunction(code):
-    return lambda context: executeSnippet(code, context)
+    return lambda context: executeSnippet(code)
 
 class Snippets(QDialog):
 
