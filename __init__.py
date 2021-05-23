@@ -316,12 +316,19 @@ class Snippets(QDialog):
         self.tree.clearSelection()
         self.currentFile = ""
 
+    def askSave(self):
+        return QMessageBox.question(self, self.tr("Save?"), self.tr("Do you want to save changes to {}?").format(self.currentFileLabel.text()), QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+
     def reject(self):
         self.settings.setValue("ui/snippeteditor/geometry", self.saveGeometry())
 
         if self.snippetChanged():
-            question = QMessageBox.question(self, self.tr("Discard"), self.tr("You have unsaved changes, quit anyway?"))
-            if question != QMessageBox.StandardButton.Yes:
+            save = self.askSave()
+            if save == QMessageBox.Yes:
+                self.save()
+            elif save == QMessageBox.No:
+                pass
+            elif save == QMessageBox.Cancel:
                 return
         self.accept()
 
@@ -359,8 +366,12 @@ class Snippets(QDialog):
         if old and old.length() > 0:
             oldSelection = self.files.filePath(old.indexes()[0])
             if not QFileInfo(oldSelection).isDir() and self.snippetChanged():
-                question = QMessageBox.question(self, self.tr("Discard"), self.tr("Snippet changed. Discard changes?"))
-                if question != QMessageBox.StandardButton.Yes:
+                save = self.askSave()
+                if save == QMessageBox.Yes:
+                    self.save()
+                elif save == QMessageBox.No:
+                    pass
+                elif save == QMessageBox.Cancel:
                     self.resetting = True
                     self.tree.selectionModel().select(old, QItemSelectionModel.ClearAndSelect | QItemSelectionModel.Rows)
                     return False
