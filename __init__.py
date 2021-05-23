@@ -438,11 +438,7 @@ class Snippets(QDialog):
             log_warn("Cannot run snippets outside of the UI at this time.")
             return
         if self.snippetChanged():
-            question = QMessageBox.question(self, self.tr("Confirm"), self.tr("You have unsaved changes, must save first. Save?"))
-            if (question == QMessageBox.StandardButton.No):
-                return
-            else:
-                self.save()
+            self.save()
         actionText = actionFromSnippet(self.currentFile, self.snippetDescription.text())
         UIActionHandler.globalActions().executeAction(actionText, self.context)
 
