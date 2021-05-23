@@ -474,7 +474,7 @@ snippets = None
 def launchPlugin(context):
     global snippets
     if not snippets:
-        snippets = Snippets(context)
+        snippets = Snippets(context, parent=context.widget)
     snippets.show()
 
 if __name__ == '__main__':
