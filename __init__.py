@@ -126,7 +126,7 @@ def setupGlobals(context):
     return snippetGlobals
 
 
-def executeSnippet(code):
+def executeSnippet(code, description):
     #Get UI context, try currently selected otherwise default to the first one if the snippet widget is selected.
     ctx = UIContext.activeContext()
     dummycontext = {'binaryView': None, 'address': None, 'function': None, 'token': None, 'lowLevelILFunction': None, 'mediumLevelILFunction': None}
@@ -145,15 +145,15 @@ def executeSnippet(code):
 
     snippetGlobals = setupGlobals(context)
 
-    SnippetTask(code, snippetGlobals, context).start()
+    SnippetTask(code, snippetGlobals, context, snippetName=description).start()
 
 
-def makeSnippetFunction(code):
-    return lambda context: executeSnippet(code)
+def makeSnippetFunction(code, description):
+    return lambda context: executeSnippet(code, description)
 
 class SnippetTask(BackgroundTaskThread):
-    def __init__(self, code, snippetGlobals, context):
-        BackgroundTaskThread.__init__(self, "Executing snippet...", False)
+    def __init__(self, code, snippetGlobals, context, snippetName="Executing snippet"):
+        BackgroundTaskThread.__init__(self, f"{snippetName}...", False)
         self.code = code
         self.globals = snippetGlobals
         self.context = context
@@ -326,7 +326,7 @@ class Snippets(QDialog):
                     UIAction.registerAction(actionText)
                 else:
                     UIAction.registerAction(actionText, snippetKeys)
-                UIActionHandler.globalActions().bindAction(actionText, UIAction(makeSnippetFunction(snippetCode)))
+                UIActionHandler.globalActions().bindAction(actionText, UIAction(makeSnippetFunction(snippetCode, actionText)))
                 Menu.mainMenu("Tools").addAction(actionText, "Snippets")
 
     def clearSelection(self):
