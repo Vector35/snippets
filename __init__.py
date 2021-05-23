@@ -4,6 +4,7 @@ import sys
 import os
 import re
 import codecs
+from collections import namedtuple
 import binaryninjaui
 from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, DockHandler, UIContext)
 if "qt_major_version" in binaryninjaui.__dict__ and binaryninjaui.qt_major_version == 6:
@@ -21,8 +22,7 @@ else:
     from PySide2.QtCore import (QDir, QObject, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl)
     from PySide2.QtGui import (QFont, QFontMetrics, QDesktopServices, QKeySequence, QIcon)
 from binaryninja import user_plugin_path
-from binaryninja.plugin import PluginCommand, MainThreadActionHandler
-from binaryninja.mainthread import execute_on_main_thread
+from binaryninja.plugin import PluginCommand, BackgroundTaskThread
 from binaryninja.log import (log_error, log_debug)
 from binaryninja.settings import Settings
 import numbers
@@ -127,31 +127,50 @@ def setupGlobals(context):
 
 
 def executeSnippet(code):
-    #get UI context
+    #Get UI context, try currently selected otherwise default to the first one if the snippet widget is selected.
     ctx = UIContext.activeContext()
+    dummycontext = {'binaryView': None, 'address': None, 'function': None, 'token': None, 'lowLevelILFunction': None, 'mediumLevelILFunction': None}
     if not ctx:
         ctx = UIContext.allContexts()[0]
-    handler = ctx.contentActionHandler()
-    context = handler.actionContext()
-    if not context.binaryView: #Not sure if this is still needed
-        dock = DockHandler.getActiveDockHandler()
-        if dock:
-            viewFrame = dock.getViewFrame()
-            if viewFrame:
-                viewInterface = viewFrame.getCurrentViewInterface()
-                context.binaryView = viewInterface.getData()
+    if not ctx:
+        #There is no tab open at all but we still want other snippest to run that don't rely on context.
+        context = namedtuple("context", dummycontext.keys())(*dummycontext.values())
+
+    else:
+        handler = ctx.contentActionHandler()
+        if handler:
+            context = handler.actionContext()
+        else:
+            context = namedtuple("context", dummycontext.keys())(*dummycontext.values())
+
     snippetGlobals = setupGlobals(context)
 
-    exec("from binaryninja import *", snippetGlobals)
-    exec(code, snippetGlobals)
-    if hasattr(snippetGlobals, "here") and snippetGlobals['here'] != context.address:
-        context.binaryView.file.navigate(context.binaryView.file.view, snippetGlobals['here'])
-    if hasattr(snippetGlobals, "current_address") and snippetGlobals['current_address'] != context.address:
-        context.binaryView.file.navigate(context.binaryView.file.view, snippetGlobals['current_address'])
+    SnippetTask(code, snippetGlobals, context).start()
 
 
 def makeSnippetFunction(code):
     return lambda context: executeSnippet(code)
+
+class SnippetTask(BackgroundTaskThread):
+    def __init__(self, code, snippetGlobals, context):
+        BackgroundTaskThread.__init__(self, "Executing snippet...", False)
+        self.code = code
+        self.globals = snippetGlobals
+        self.context = context
+
+    def run(self):
+        if self.context.binaryView:
+            self.context.binaryView.begin_undo_actions()
+        snippetGlobals = self.globals
+        exec("from binaryninja import *", snippetGlobals)
+        exec(self.code, snippetGlobals)
+        if "here" in snippetGlobals and hasattr(self.context, "address") and snippetGlobals['here'] != self.context.address:
+            self.context.binaryView.file.navigate(self.context.binaryView.file.view, snippetGlobals['here'])
+        if "current_address" in snippetGlobals and hasattr(self.context, "address") and snippetGlobals['current_address'] != self.context.address:
+            self.context.binaryView.file.navigate(self.context.binaryView.file.view, snippetGlobals['current_address'])
+        if self.context.binaryView:
+            self.context.binaryView.commit_undo_actions()
+
 
 class Snippets(QDialog):
 
