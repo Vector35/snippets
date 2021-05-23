@@ -154,7 +154,6 @@ class Snippets(QDialog):
         super(Snippets, self).__init__(parent)
         # Create widgets
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
-        self.setWindowModality(Qt.ApplicationModal)
         self.title = QLabel(self.tr("Snippet Editor"))
         self.saveButton = QPushButton(self.tr("&Save"))
         self.saveButton.setShortcut(QKeySequence(self.tr("Ctrl+S")))
@@ -465,10 +464,13 @@ class Snippets(QDialog):
         self.keySequenceEdit.clear()
 
 
-def launchPlugin(context):
-    snippets = Snippets(context)
-    snippets.exec_()
+snippets = None
 
+def launchPlugin(context):
+    global snippets
+    if not snippets:
+        snippets = Snippets(context)
+    snippets.show()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
