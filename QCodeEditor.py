@@ -153,8 +153,9 @@ class QCodeEditor(QPlainTextEdit):
             self.editor = editor
             self.editor.blockCountChanged.connect(self.updateWidth)
             self.editor.updateRequest.connect(self.updateContents)
-            self.font = QFont()
+            self.font = editor.font()
             self.numberBarColor = bnstyles["numberBar"]
+            self.updateWidth()
 
         def paintEvent(self, event):
             painter = QPainter(self)
