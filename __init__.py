@@ -350,7 +350,7 @@ class Snippets(QDialog):
             if save == QMessageBox.Yes:
                 self.save()
             elif save == QMessageBox.No:
-                pass
+                self.loadSnippet()
             elif save == QMessageBox.Cancel:
                 return
         self.accept()
