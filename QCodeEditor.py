@@ -252,6 +252,14 @@ class QCodeEditor(QPlainTextEdit):
             return True
         return False
 
+    def replaceBlockAtCursor(self, newText):
+        cursor=self.textCursor()
+        cursor.select(QTextCursor.BlockUnderCursor)
+        if cursor.selectionStart() != 0:
+            newText = "\n" + newText
+        cursor.removeSelectedText()
+        cursor.insertText(newText)
+
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Backtab and self.textCursor().hasSelection():
             startCursor = self.textCursor()
@@ -301,9 +309,7 @@ class QCodeEditor(QPlainTextEdit):
             self.completionState = 0
             cursor = self.textCursor()
             cursor.beginEditBlock()
-            cursor.select(QTextCursor.BlockUnderCursor)
-            cursor.removeSelectedText()
-            cursor.insertText("\n" + self.origText)
+            self.replaceBlockAtCursor(self.origText)
             cursor.endEditBlock()
             self.origText == None
             return
@@ -318,22 +324,16 @@ class QCodeEditor(QPlainTextEdit):
                 if self.completionState == 0:
                     self.origText = self.textCursor().block().text()
                 if self.completionState > 0:
-                    cursor.select(QTextCursor.BlockUnderCursor)
-                    cursor.removeSelectedText()
-                    cursor.insertText("\n" + self.origText)
+                    self.replaceBlockAtCursor(self.origText)
                 newText = self.completer.complete(self.origText, self.completionState)
                 if newText:
                     if newText.find("(") > 0:
                         newText = newText[0:newText.find("(") + 1]
                     self.completionState += 1
-                    cursor.select(QTextCursor.BlockUnderCursor)
-                    cursor.removeSelectedText()
-                    cursor.insertText("\n" + newText)
+                    self.replaceBlockAtCursor(newText)
                 else:
                     self.completionState = 0
-                    cursor.select(QTextCursor.BlockUnderCursor)
-                    cursor.removeSelectedText()
-                    cursor.insertText("\n" + self.origText)
+                    self.replaceBlockAtCursor(self.origText)
                     self.origText == None
                 cursor.endEditBlock()
                 self.completing = False
