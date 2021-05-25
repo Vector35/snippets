@@ -11,15 +11,15 @@ https://github.com/luchko/QCodeEditor
 '''
 
 import binaryninjaui
-from binaryninja import log_warn
+from binaryninja import log_warn, bncompleter
 if "qt_major_version" in binaryninjaui.__dict__ and binaryninjaui.qt_major_version == 6:
     from PySide6.QtCore import Qt, QRect, QRegularExpression
     from PySide6.QtWidgets import QWidget, QTextEdit, QPlainTextEdit
-    from PySide6.QtGui import (QPainter, QFont, QSyntaxHighlighter, QTextFormat, QTextCharFormat, QColor)
+    from PySide6.QtGui import (QPainter, QFont, QSyntaxHighlighter, QTextFormat, QTextCharFormat, QColor, QTextCursor)
 else:
     from PySide2.QtCore import Qt, QRect, QRegularExpression
     from PySide2.QtWidgets import QWidget, QTextEdit, QPlainTextEdit
-    from PySide2.QtGui import (QPainter, QFont, QSyntaxHighlighter, QTextFormat, QTextCharFormat, QColor)
+    from PySide2.QtGui import (QPainter, QFont, QSyntaxHighlighter, QTextFormat, QTextCharFormat, QColor, QTextCursor)
 from binaryninjaui import (getMonospaceFont, getThemeColor, ThemeColor)
 from pygments import highlight, token
 from pygments.lexers import *
@@ -216,13 +216,18 @@ class QCodeEditor(QPlainTextEdit):
 
 
     def __init__(self, DISPLAY_LINE_NUMBERS=True, HIGHLIGHT_CURRENT_LINE=True,
-                 SyntaxHighlighter=Pylighter, lang="python", font_size=11, *args):
+                 SyntaxHighlighter=Pylighter, lang="python", font_size=11, delimeter="    ", *args):
         super(QCodeEditor, self).__init__()
 
         font = getMonospaceFont(self)
         font.setPointSize(font_size)
         self.setFont(font)
         self.setLineWrapMode(QPlainTextEdit.NoWrap)
+        self.completionState = 0
+        self.completing = False
+        self.delimeter = delimeter
+        self.completer = bncompleter.Completer()
+        self.cursorPositionChanged.connect(self.resetCompletion)
 
         self.DISPLAY_LINE_NUMBERS = DISPLAY_LINE_NUMBERS
 
@@ -231,6 +236,111 @@ class QCodeEditor(QPlainTextEdit):
 
         if SyntaxHighlighter is not None: # add highlighter to textdocument
             self.highlighter = SyntaxHighlighter(self.document(), lang)
+
+    def resetCompletion(self):
+        if not self.completing:
+            self.completionState = 0
+
+    def isStart(self):
+        tempCursor = self.textCursor()
+        if tempCursor.positionInBlock() == 0:
+            return True
+        startText = tempCursor.block().text()[0:tempCursor.positionInBlock()]
+        delim = set(self.delimeter)
+        if set(startText) - delim == set():
+            #only delimeters before cursor, not worrying about varying lengths of spaces for now
+            return True
+        return False
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Backtab and self.textCursor().hasSelection():
+            startCursor = self.textCursor()
+            startCursor.beginEditBlock()
+            startPos = startCursor.selectionStart()
+            startCursor.setPosition(startPos)
+            startCursor.movePosition(QTextCursor.StartOfLine, QTextCursor.MoveAnchor)
+            startCursor.clearSelection()
+
+            endCursor = self.textCursor()
+            endPos = endCursor.selectionEnd()
+            endCursor.setPosition(endPos)
+            endCursor.movePosition(QTextCursor.StartOfLine)
+
+            while startCursor.anchor() != endCursor.position():
+                startCursor.movePosition(QTextCursor.NextCharacter, QTextCursor.KeepAnchor, len(self.delimeter))
+                if startCursor.selectedText() == self.delimeter:
+                    startCursor.removeSelectedText()
+                startCursor.movePosition(QTextCursor.NextBlock, QTextCursor.MoveAnchor)
+            startCursor.movePosition(QTextCursor.NextCharacter, QTextCursor.KeepAnchor, len(self.delimeter))
+            if startCursor.selectedText() == self.delimeter:
+                startCursor.removeSelectedText()
+            startCursor.endEditBlock()
+            return
+
+        if event.key() == Qt.Key_Tab and self.textCursor().hasSelection():
+            startCursor = self.textCursor()
+            startCursor.beginEditBlock()
+            startPos = startCursor.selectionStart()
+            startCursor.setPosition(startPos)
+            startCursor.movePosition(QTextCursor.StartOfLine)
+
+            endCursor = self.textCursor()
+            endPos = endCursor.selectionEnd()
+            endCursor.setPosition(endPos)
+            endCursor.movePosition(QTextCursor.StartOfLine)
+
+            while startCursor.position() != endCursor.position():
+                startCursor.insertText(self.delimeter)
+                startCursor.movePosition(QTextCursor.NextBlock)
+
+            startCursor.insertText(self.delimeter)
+            startCursor.endEditBlock()
+            return
+
+        if event.key() == Qt.Key_Escape and self.completionState > 0:
+            self.completionState = 0
+            cursor = self.textCursor()
+            cursor.beginEditBlock()
+            cursor.select(QTextCursor.BlockUnderCursor)
+            cursor.removeSelectedText()
+            cursor.insertText("\n" + self.origText)
+            cursor.endEditBlock()
+            self.origText == None
+            return
+
+        if event.key() == Qt.Key_Tab:
+            if self.isStart():
+                self.textCursor().insertText(self.delimeter)
+            else:
+                cursor = self.textCursor()
+                cursor.beginEditBlock()
+                self.completing = True
+                if self.completionState == 0:
+                    self.origText = self.textCursor().block().text()
+                if self.completionState > 0:
+                    cursor.select(QTextCursor.BlockUnderCursor)
+                    cursor.removeSelectedText()
+                    cursor.insertText("\n" + self.origText)
+                newText = self.completer.complete(self.origText, self.completionState)
+                if newText:
+                    if newText.find("(") > 0:
+                        newText = newText[0:newText.find("(") + 1]
+                    self.completionState += 1
+                    cursor.select(QTextCursor.BlockUnderCursor)
+                    cursor.removeSelectedText()
+                    cursor.insertText("\n" + newText)
+                else:
+                    self.completionState = 0
+                    cursor.select(QTextCursor.BlockUnderCursor)
+                    cursor.removeSelectedText()
+                    cursor.insertText("\n" + self.origText)
+                    self.origText == None
+                cursor.endEditBlock()
+                self.completing = False
+            return
+
+        return super().keyPressEvent(event)
+
 
     def resizeEvent(self, *e):
         '''overload resizeEvent handler'''
