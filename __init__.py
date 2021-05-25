@@ -38,6 +38,15 @@ Settings().register_setting("snippets.syntaxHighlight", """
         "ignore" : ["SettingsProjectScope", "SettingsResourceScope"]
     }
     """)
+Settings().register_setting("snippets.indentation", """
+    {
+        "title" : "Indentation Syntax highlighting for snippets",
+        "type" : "string",
+        "default" : "    ",
+        "description" : "String to use for indentation in snippets (tip: to use a tab, copy/paste a tab from another text field and paste here)",
+        "ignore" : ["SettingsProjectScope", "SettingsResourceScope"]
+    }
+    """)
 
 
 snippetPath = os.path.realpath(os.path.join(user_plugin_path(), "..", "snippets"))
@@ -191,10 +200,11 @@ class Snippets(QDialog):
         self.browseButton.setIcon(QIcon.fromTheme("edit-undo"))
         self.deleteSnippetButton = QPushButton("Delete")
         self.newSnippetButton = QPushButton("New Snippet")
+        indentation = Settings().get_string("snippets.indentation")
         if Settings().get_bool("snippets.syntaxHighlight"):
-            self.edit = QCodeEditor(SyntaxHighlighter=Pylighter)
+            self.edit = QCodeEditor(SyntaxHighlighter=Pylighter, delimeter = indentation)
         else:
-            self.edit = QCodeEditor(SyntaxHighlighter=None)
+            self.edit = QCodeEditor(SyntaxHighlighter=None, delimeter = indentation)
         self.edit.setPlaceholderText("python code")
         self.resetting = False
         self.columns = 3
