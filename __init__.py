@@ -28,7 +28,7 @@ from binaryninja.settings import Settings
 import numbers
 from .QCodeEditor import QCodeEditor, Pylighter
 
-Settings().register_group("snippest", "Snippets")
+Settings().register_group("snippets", "Snippets")
 Settings().register_setting("snippets.syntaxHighlight", """
     {
         "title" : "Syntax highlighting for snippets",
