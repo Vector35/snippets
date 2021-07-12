@@ -61,7 +61,7 @@ def includeWalk(dir, includeExt):
     filePaths = []
     for (root, dirs, files) in os.walk(dir):
         for f in files:
-            if os.path.splitext(f)[1] in includeExt:
+            if os.path.splitext(f)[1] in includeExt and '.git' not in root:
                 filePaths.append(os.path.join(root, f))
     return filePaths
 
