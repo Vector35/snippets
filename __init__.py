@@ -213,8 +213,9 @@ class Snippets(QDialog):
         self.keySequenceEdit = QKeySequenceEdit(self)
         self.currentHotkey = QKeySequence()
         self.currentHotkeyLabel = QLabel("")
-        self.currentFileLabel = QLabel()
         self.currentFile = ""
+        self.snippetName = QLineEdit()
+        self.snippetName.setPlaceholderText("snippet filename")
         self.snippetDescription = QLineEdit()
         self.snippetDescription.setPlaceholderText("optional description")
 
@@ -260,6 +261,8 @@ class Snippets(QDialog):
         buttons.addWidget(self.saveButton)
 
         description = QHBoxLayout()
+        description.addWidget(QLabel(self.tr("Filename: ")))
+        description.addWidget(self.snippetName)
         description.addWidget(QLabel(self.tr("Description: ")))
         description.addWidget(self.snippetDescription)
 
@@ -343,14 +346,14 @@ class Snippets(QDialog):
         self.keySequenceEdit.clear()
         self.currentHotkey = QKeySequence()
         self.currentHotkeyLabel.setText("")
-        self.currentFileLabel.setText("")
+        self.snippetName.setText("")
         self.snippetDescription.setText("")
         self.edit.clear()
         self.tree.clearSelection()
         self.currentFile = ""
 
     def askSave(self):
-        return QMessageBox.question(self, self.tr("Save?"), self.tr("Do you want to save changes to {}?").format(self.currentFileLabel.text()), QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+        return QMessageBox.question(self, self.tr("Save?"), self.tr("Do you want to save changes to:\n\n{}?").format(self.snippetName.text()), QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
 
     def reject(self):
         self.settings.setValue("ui/snippeteditor/geometry", self.saveGeometry())
@@ -413,8 +416,8 @@ class Snippets(QDialog):
         self.loadSnippet()
 
     def loadSnippet(self):
-        self.currentFileLabel.setText(QFileInfo(self.currentFile).baseName())
         (snippetDescription, snippetKeys, snippetCode) = loadSnippetFromFile(self.currentFile)
+        self.snippetName.setText(os.path.basename(self.currentFile))
         self.snippetDescription.setText(snippetDescription) if snippetDescription else self.snippetDescription.setText("")
         self.keySequenceEdit.setKeySequence(snippetKeys) if snippetKeys else self.keySequenceEdit.setKeySequence(QKeySequence(""))
         self.edit.setPlainText(snippetCode) if snippetCode else self.edit.setPlainText("")
@@ -439,12 +442,15 @@ class Snippets(QDialog):
     def readOnly(self, flag):
         self.keySequenceEdit.setEnabled(not flag)
         self.snippetDescription.setReadOnly(flag)
+        self.snippetName.setReadOnly(flag)
         self.edit.setReadOnly(flag)
         if flag:
             self.snippetDescription.setDisabled(True)
+            self.snippetName.setDisabled(True)
             self.edit.setDisabled(True)
         else:
             self.snippetDescription.setEnabled(True)
+            self.snippetName.setEnabled(True)
             self.edit.setEnabled(True)
 
     def deleteSnippet(self):
@@ -461,6 +467,8 @@ class Snippets(QDialog):
         if (self.currentFile == "" or QFileInfo(self.currentFile).isDir()):
             return False
         (snippetDescription, snippetKeys, snippetCode) = loadSnippetFromFile(self.currentFile)
+        if os.path.basename(self.currentFile) != self.snippetName.text():
+            return True
         if snippetKeys == None and not self.keySequenceEdit.keySequence().isEmpty():
             return True
         if snippetKeys != None and snippetKeys != self.keySequenceEdit.keySequence().toString():
@@ -469,6 +477,12 @@ class Snippets(QDialog):
                self.snippetDescription.text() != snippetDescription
 
     def save(self):
+        if os.path.basename(self.currentFile) != self.snippetName:
+            #Renamed
+            if not self.snippetName.text().endswith(".py") and not QMessageBox.question(self, self.tr("Rename?"), self.tr("Are you sure you want to rename?\n\n{} does not end in .py and you will not be able to rename back with snippets.").format(self.snippetName.text()), QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel) == QMessageBox.Yes:
+                return
+            os.unlink(self.currentFile)
+            self.currentFile = os.path.join(os.path.dirname(self.currentFile), self.snippetName.text())
         log_debug("Saving snippet %s" % self.currentFile)
         outputSnippet = codecs.open(self.currentFile, "w", "utf-8")
         outputSnippet.write("#" + self.snippetDescription.text() + "\n")
