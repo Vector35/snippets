@@ -69,7 +69,7 @@ bnstyles = {
     'Token.Keyword': bnformat('StackVariableColor'),
 
     'Token.Operator': bnformat('TokenHighlightColor'),
-    'Token.Punctuation': bnformat('LinearDisassemblySeparatorColor'),
+    'Token.Punctuation': bnformat('UncertainColor'),
 
     #This is the most important and hardest to get right. No way to get theme palettes!
     'Token.Name': bnformat('OutlineColor'), 
