@@ -324,7 +324,7 @@ class Snippets(QDialog):
     @staticmethod
     def registerAllSnippets():
         for action in list(filter(lambda x: x.startswith("Snippets\\"), UIAction.getAllRegisteredActions())):
-            if action == "Snippets\\Snippet Editor...":
+            if action in ["Snippets\\Snippet Editor...", "Snippets\\Reload All Snippets"]:
                 continue
             UIActionHandler.globalActions().unbindAction(action)
             Menu.mainMenu("Tools").removeAction(action)
@@ -528,5 +528,8 @@ if __name__ == '__main__':
 else:
     Snippets.registerAllSnippets()
     UIAction.registerAction("Snippets\\Snippet Editor...")
+    UIAction.registerAction("Snippets\\Reload All Snippets")
     UIActionHandler.globalActions().bindAction("Snippets\\Snippet Editor...", UIAction(launchPlugin))
+    UIActionHandler.globalActions().bindAction("Snippets\\Reload All Snippets", UIAction(Snippets.registerAllSnippets))
     Menu.mainMenu("Tools").addAction("Snippets\\Snippet Editor...", "Snippet")
+    Menu.mainMenu("Tools").addAction("Snippets\\Reload All Snippets", "Snippet")
