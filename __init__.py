@@ -2,15 +2,17 @@
 # -*- coding: utf-8 -*-
 import sys
 import os
-import re
+import shutil
 import codecs
+import getpass
 from collections import namedtuple
+from datetime import datetime
 import binaryninjaui
 from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, DockHandler, UIContext)
 if "qt_major_version" in binaryninjaui.__dict__ and binaryninjaui.qt_major_version == 6:
     from PySide6.QtWidgets import (QLineEdit, QPushButton, QApplication, QTextEdit, QWidget,
          QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
-         QInputDialog, QMessageBox, QHeaderView, QMenu, QKeySequenceEdit,
+         QInputDialog, QMessageBox, QHeaderView, QMenu, QKeySequenceEdit, QCheckBox,
          QPlainTextEdit)
     from PySide6.QtCore import (QDir, QObject, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl)
     from PySide6.QtGui import (QAction, QFont, QFontMetrics, QDesktopServices, QKeySequence, QIcon)
@@ -21,10 +23,11 @@ else:
          QPlainTextEdit)
     from PySide2.QtCore import (QDir, QObject, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl)
     from PySide2.QtGui import (QFont, QFontMetrics, QDesktopServices, QKeySequence, QIcon)
-from binaryninja import user_plugin_path
+from binaryninja import user_plugin_path, core_version
 from binaryninja.plugin import PluginCommand, BackgroundTaskThread
-from binaryninja.log import (log_error, log_debug)
+from binaryninja.log import (log_error, log_debug, log_alert)
 from binaryninja.settings import Settings
+from binaryninja.interaction import get_directory_name_input
 import numbers
 from .QCodeEditor import QCodeEditor, Pylighter
 
@@ -173,6 +176,8 @@ class SnippetTask(BackgroundTaskThread):
         snippetGlobals = self.globals
         exec("from binaryninja import *", snippetGlobals)
         exec(self.code, snippetGlobals)
+        if self.updateAnalysis.isChecked():
+            exec("bv.update_analysis_and_wait()", snippetGlobals)
         if "here" in snippetGlobals and hasattr(self.context, "address") and snippetGlobals['here'] != self.context.address:
             self.context.binaryView.file.navigate(self.context.binaryView.file.view, snippetGlobals['here'])
         if "current_address" in snippetGlobals and hasattr(self.context, "address") and snippetGlobals['current_address'] != self.context.address:
@@ -190,9 +195,12 @@ class Snippets(QDialog):
         self.title = QLabel(self.tr("Snippet Editor"))
         self.saveButton = QPushButton(self.tr("&Save"))
         self.saveButton.setShortcut(QKeySequence(self.tr("Ctrl+S")))
+        self.exportButton = QPushButton(self.tr("&Export as Plugin"))
+        self.saveButton.setShortcut(QKeySequence(self.tr("Ctrl+E")))
         self.runButton = QPushButton(self.tr("&Run"))
         self.runButton.setShortcut(QKeySequence(self.tr("Ctrl+R")))
         self.closeButton = QPushButton(self.tr("Close"))
+        self.updateAnalysis = QCheckBox(self.tr("Update Analysis When Run"))
         self.clearHotkeyButton = QPushButton(self.tr("Clear Hotkey"))
         self.setWindowTitle(self.title.text())
         #self.newFolderButton = QPushButton("New Folder")
@@ -252,13 +260,22 @@ class Snippets(QDialog):
         treeWidget.setLayout(treeLayout)
 
         # Create layout and add widgets
+        optionsAndButtons = QVBoxLayout()
+
+        options = QHBoxLayout()
+        options.addWidget(self.clearHotkeyButton)
+        options.addWidget(self.keySequenceEdit)
+        options.addWidget(self.currentHotkeyLabel)
+        options.addWidget(self.updateAnalysis)
+
         buttons = QHBoxLayout()
-        buttons.addWidget(self.clearHotkeyButton)
-        buttons.addWidget(self.keySequenceEdit)
-        buttons.addWidget(self.currentHotkeyLabel)
+        buttons.addWidget(self.exportButton)
         buttons.addWidget(self.closeButton)
         buttons.addWidget(self.runButton)
         buttons.addWidget(self.saveButton)
+
+        optionsAndButtons.addLayout(options)
+        optionsAndButtons.addLayout(buttons)
 
         description = QHBoxLayout()
         description.addWidget(QLabel(self.tr("Filename: ")))
@@ -270,7 +287,7 @@ class Snippets(QDialog):
         vlayout = QVBoxLayout()
         vlayout.addLayout(description)
         vlayout.addWidget(self.edit)
-        vlayout.addLayout(buttons)
+        vlayout.addLayout(optionsAndButtons)
         vlayoutWidget.setLayout(vlayout)
 
         hsplitter = QSplitter()
@@ -299,6 +316,7 @@ class Snippets(QDialog):
         self.saveButton.clicked.connect(self.save)
         self.closeButton.clicked.connect(self.close)
         self.runButton.clicked.connect(self.run)
+        self.exportButton.clicked.connect(self.export)
         self.clearHotkeyButton.clicked.connect(self.clearHotkey)
         self.tree.selectionModel().selectionChanged.connect(self.selectFile)
         self.newSnippetButton.clicked.connect(self.newFileDialog)
@@ -437,7 +455,7 @@ class Snippets(QDialog):
                 self.readOnly(False)
             open(path, "w").close()
             self.tree.setCurrentIndex(self.files.index(path))
-            log_debug("Snippet %s created." % snippetName)
+            log_debug("Snippets: Snippet %s created." % snippetName)
 
     def readOnly(self, flag):
         self.keySequenceEdit.setEnabled(not flag)
@@ -458,7 +476,7 @@ class Snippets(QDialog):
         snippetName = self.files.fileName(selection)
         question = QMessageBox.question(self, self.tr("Confirm"), self.tr("Confirm deletion: ") + snippetName)
         if (question == QMessageBox.StandardButton.Yes):
-            log_debug("Deleting snippet %s." % snippetName)
+            log_debug("Snippets: Deleting snippet %s." % snippetName)
             self.clearSelection()
             self.files.remove(selection)
             self.registerAllSnippets()
@@ -483,7 +501,7 @@ class Snippets(QDialog):
                 return
             os.unlink(self.currentFile)
             self.currentFile = os.path.join(os.path.dirname(self.currentFile), self.snippetName.text())
-        log_debug("Saving snippet %s" % self.currentFile)
+        log_debug("Snippets: Saving snippet %s" % self.currentFile)
         outputSnippet = codecs.open(self.currentFile, "w", "utf-8")
         outputSnippet.write("#" + self.snippetDescription.text() + "\n")
         outputSnippet.write("#" + self.keySequenceEdit.keySequence().toString() + "\n")
@@ -500,13 +518,130 @@ class Snippets(QDialog):
         actionText = actionFromSnippet(self.currentFile, self.snippetDescription.text())
         UIActionHandler.globalActions().executeAction(actionText, self.context)
 
-        log_debug("Saving snippet %s" % self.currentFile)
+        log_debug("Snippets: Saving snippet %s" % self.currentFile)
         outputSnippet = codecs.open(self.currentFile, "w", "utf-8")
         outputSnippet.write("#" + self.snippetDescription.text() + "\n")
         outputSnippet.write("#" + self.keySequenceEdit.keySequence().toString() + "\n")
         outputSnippet.write(self.edit.toPlainText())
         outputSnippet.close()
         self.registerAllSnippets()
+
+    def export(self):
+        if self.snippetChanged():
+            save = self.askSave()
+            if save == QMessageBox.Yes:
+                self.save()
+            elif save == QMessageBox.No:
+                self.loadSnippet()
+            elif save == QMessageBox.Cancel:
+                return
+        folder = get_directory_name_input("Where would you like the plugin saved?", user_plugin_path())
+        if self.snippetName.text() == "" or self.snippetDescription.text() == "":
+            log_alert("Snippets must have a name and description to be exported")
+            return
+        description = self.snippetDescription.text()
+        name = self.snippetName.text()
+        if name.endswith('.py'):
+            name = name[:-3]
+        user = getpass.getuser()
+        version = "2846"
+        if core_version().count('.') == 2:
+            version = core_version()[core_version().rfind('.')+1:core_version().rfind('.')+5]
+        candidate = os.path.join(folder, name)
+        if os.path.exists(candidate):
+            overwrite = QMessageBox.question(self, self.tr("Folder already exists"), self.tr(f"That folder already exists, do you want to remove the folder first?\n{candidate}"), QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+            if overwrite == QMessageBox.Yes:
+                log_debug("Snippets: Aborting export due to existing folder.")
+                shutil.rmtree(candidate)
+                self.save()
+            elif overwrite == QMessageBox.Cancel:
+                log_debug("Snippets: Aborting export due to existing folder.")
+                return
+        os.mkdir(candidate)
+        #If no, continue just overwriting individual files.
+        licenseText = f'''Copyright (c) {datetime.now().year} <{user}>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+'''
+        with open(os.path.join(candidate, "plugin.json"), 'w') as pluginjson:
+            #not using f strings 'cause json isn't great for that
+            pluginjson.write('''{
+  "pluginmetadataversion": 2,
+  "name": "''' + name + '''",
+  "type": [
+    "core",
+    "ui",
+    "architecture",
+    "binaryview",
+    "helper"
+  ],
+  "api": [
+    "python3"
+  ],
+  "description": "''' + description + '''",
+  "longdescription": "",
+  "license": {
+    "name": "MIT",
+    "text": "''' + licenseText.replace("\n", "\\n") + '''"
+  },
+  "platforms": [
+    "Darwin",
+    "Linux",
+    "Windows"
+  ],
+  "installinstructions": {
+    "Darwin": "",
+    "Linux": "",
+    "Windows": ""
+  },
+  "dependencies": {
+    "pip": [
+      "",
+    ],
+  },
+  "version": "1.0.0",
+  "author": "''' + user + '''",
+  "minimumbinaryninjaversion": ''' + version + '''
+}
+''')
+        with open(os.path.join(candidate, "LICENSE"), 'w') as license:
+            #Defaulting to MIT for now, adjust later.
+            license.write(licenseText)
+        with open(os.path.join(candidate, "__init__.py"), 'w') as initpy:
+            # Yes, this is dirty, but it works.  The other option was to use
+            # eval but that would make future maintenance harder.
+            if self.edit.toPlainText().count("\t") > self.edit.toPlainText().count("    "):
+                delim = "\t"
+            else:
+                delim = "    " #not going to be any fancier than this for now
+            pluginCode = delim + f'\n{delim}'.join(self.edit.toPlainText().split('\n'))
+            if self.updateAnalysis.isChecked():
+                update = f"{delim}bv.update_analysis_and_wait()"
+            else:
+                update = ""
+            initpy.write(f"""from binaryninja import *
+
+# Note that this is a sample plugin and you may need to manually edit it with
+# additional functionality. In particular, this example only passes in the
+# binary view. If you would like to act on an addres or function you should
+# consider using other register_for* functions.
+
+# Add documentation about UI plugin alternatives and potentially getting
+# current_* functions
+
+def main(bv):
+{pluginCode}
+{update}
+
+PluginCommand.register('{name}', '{description}', main)
+
+""")
+        url = QUrl.fromLocalFile(candidate)
+        QDesktopServices.openUrl(url)
 
     def clearHotkey(self):
         self.keySequenceEdit.clear()
