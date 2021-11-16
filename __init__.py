@@ -195,12 +195,12 @@ class Snippets(QDialog):
         self.title = QLabel(self.tr("Snippet Editor"))
         self.saveButton = QPushButton(self.tr("&Save"))
         self.saveButton.setShortcut(QKeySequence(self.tr("Ctrl+S")))
-        self.exportButton = QPushButton(self.tr("&Export as Plugin"))
-        self.saveButton.setShortcut(QKeySequence(self.tr("Ctrl+E")))
+        self.exportButton = QPushButton(self.tr("&Export to plugin"))
+        self.exportButton.setShortcut(QKeySequence(self.tr("Ctrl+E")))
         self.runButton = QPushButton(self.tr("&Run"))
         self.runButton.setShortcut(QKeySequence(self.tr("Ctrl+R")))
         self.closeButton = QPushButton(self.tr("Close"))
-        self.updateAnalysis = QCheckBox(self.tr("Update Analysis When Run"))
+        self.updateAnalysis = QCheckBox(self.tr("Update analysis when run"))
         self.clearHotkeyButton = QPushButton(self.tr("Clear Hotkey"))
         self.setWindowTitle(self.title.text())
         #self.newFolderButton = QPushButton("New Folder")
@@ -535,19 +535,24 @@ class Snippets(QDialog):
                 self.loadSnippet()
             elif save == QMessageBox.Cancel:
                 return
+
         folder = get_directory_name_input("Where would you like the plugin saved?", user_plugin_path())
         if self.snippetName.text() == "" or self.snippetDescription.text() == "":
+            #TODO: Prompt user for description if missing
             log_alert("Snippets must have a name and description to be exported")
             return
+
         description = self.snippetDescription.text()
         name = self.snippetName.text()
         if name.endswith('.py'):
             name = name[:-3]
+        #TODO: Form allowing input of multiple options such as user
         user = getpass.getuser()
         version = "2846"
         if core_version().count('.') == 2:
             version = core_version()[core_version().rfind('.')+1:core_version().rfind('.')+5]
         candidate = os.path.join(folder, name)
+
         if os.path.exists(candidate):
             overwrite = QMessageBox.question(self, self.tr("Folder already exists"), self.tr(f"That folder already exists, do you want to remove the folder first?\n{candidate}"), QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
             if overwrite == QMessageBox.Yes:
@@ -558,7 +563,9 @@ class Snippets(QDialog):
                 log_debug("Snippets: Aborting export due to existing folder.")
                 return
         os.mkdir(candidate)
+
         #If no, continue just overwriting individual files.
+        #TODO: License chooser from drop-down
         licenseText = f'''Copyright (c) {datetime.now().year} <{user}>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
@@ -609,15 +616,15 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 }
 ''')
         with open(os.path.join(candidate, "LICENSE"), 'w') as license:
-            #Defaulting to MIT for now, adjust later.
             license.write(licenseText)
+
+        #TODO: Optionally export plugin as UIPlugin with helpers established if
+        #current_* appears anywhere in it
         with open(os.path.join(candidate, "__init__.py"), 'w') as initpy:
-            # Yes, this is dirty, but it works.  The other option was to use
-            # eval but that would make future maintenance harder.
             if self.edit.toPlainText().count("\t") > self.edit.toPlainText().count("    "):
                 delim = "\t"
             else:
-                delim = "    " #not going to be any fancier than this for now
+                delim = "    " #not going to be any fancier than this for now, you get two choices
             pluginCode = delim + f'\n{delim}'.join(self.edit.toPlainText().split('\n'))
             if self.updateAnalysis.isChecked():
                 update = f"{delim}bv.update_analysis_and_wait()"
@@ -640,6 +647,32 @@ def main(bv):
 PluginCommand.register('{name}', '{description}', main)
 
 """)
+        #TODO: Export README 
+
+        longdescription='Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.  Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.'
+        with open(os.path.join(candidate, "README.md"), 'w') as readme:
+            readme.write(f'''# {name}
+Author: **{user}** 
+
+_{description}_
+
+## Description:
+
+{longdescription}
+
+## Minimum Version
+
+{version}
+
+## License
+
+This plugin is released under an [MIT license](./LICENSE).
+
+## Metadata Version
+
+2''')
+
+
         url = QUrl.fromLocalFile(candidate)
         QDesktopServices.openUrl(url)
 
