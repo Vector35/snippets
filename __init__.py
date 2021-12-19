@@ -8,24 +8,22 @@ import getpass
 from collections import namedtuple
 from datetime import datetime
 import binaryninjaui
-from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, DockHandler, UIContext)
+from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, UIContext)
 if "qt_major_version" in binaryninjaui.__dict__ and binaryninjaui.qt_major_version == 6:
-    from PySide6.QtWidgets import (QLineEdit, QPushButton, QApplication, QTextEdit, QWidget,
+    from PySide6.QtWidgets import (QLineEdit, QPushButton, QApplication, QWidget,
          QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
-         QInputDialog, QMessageBox, QHeaderView, QMenu, QKeySequenceEdit, QCheckBox,
-         QPlainTextEdit)
-    from PySide6.QtCore import (QDir, QObject, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl)
-    from PySide6.QtGui import (QAction, QFont, QFontMetrics, QDesktopServices, QKeySequence, QIcon)
+         QInputDialog, QMessageBox, QHeaderView, QKeySequenceEdit, QCheckBox)
+    from PySide6.QtCore import (QDir, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl)
+    from PySide6.QtGui import (QFontMetrics, QDesktopServices, QKeySequence, QIcon)
 else:
-    from PySide2.QtWidgets import (QLineEdit, QPushButton, QApplication, QTextEdit, QWidget,
+    from PySide2.QtWidgets import (QLineEdit, QPushButton, QApplication, QWidget,
          QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
-         QInputDialog, QMessageBox, QHeaderView, QMenu, QKeySequenceEdit, QAction,
-         QPlainTextEdit)
-    from PySide2.QtCore import (QDir, QObject, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl)
-    from PySide2.QtGui import (QFont, QFontMetrics, QDesktopServices, QKeySequence, QIcon)
+         QInputDialog, QMessageBox, QHeaderView, QKeySequenceEdit, QCheckBox)
+    from PySide2.QtCore import (QDir, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl)
+    from PySide2.QtGui import (QFontMetrics, QDesktopServices, QKeySequence, QIcon)
 from binaryninja import user_plugin_path, core_version
-from binaryninja.plugin import PluginCommand, BackgroundTaskThread
-from binaryninja.log import (log_error, log_debug, log_alert)
+from binaryninja.plugin import BackgroundTaskThread
+from binaryninja.log import (log_error, log_debug, log_alert, log_warn)
 from binaryninja.settings import Settings
 from binaryninja.interaction import get_directory_name_input
 import numbers
@@ -56,8 +54,13 @@ snippetPath = os.path.realpath(os.path.join(user_plugin_path(), "..", "snippets"
 try:
     if not os.path.exists(snippetPath):
         os.mkdir(snippetPath)
+    dst_examples = os.path.join(snippetPath, "update_example_snippets.py")
+    src_examples = os.path.join(os.path.dirname(os.path.realpath(__file__)), "update_example_snippets.py")
+    if not os.path.exists(dst_examples):
+        shutil.copy(src_examples, dst_examples)
+
 except IOError:
-    log_error("Unable to create %s" % snippetPath)
+    log_error("Unable to create %s or unable to add example updater" % snippetPath)
 
 
 def includeWalk(dir, includeExt):
@@ -163,6 +166,9 @@ def executeSnippet(code, description):
 def makeSnippetFunction(code, description):
     return lambda context: executeSnippet(code, description)
 
+# Global variable to indicate if analysis should be updated after a snippet is run
+gUpdateAnalysisOnRun = False
+
 class SnippetTask(BackgroundTaskThread):
     def __init__(self, code, snippetGlobals, context, snippetName="Executing snippet"):
         BackgroundTaskThread.__init__(self, f"{snippetName}...", False)
@@ -176,7 +182,7 @@ class SnippetTask(BackgroundTaskThread):
         snippetGlobals = self.globals
         exec("from binaryninja import *", snippetGlobals)
         exec(self.code, snippetGlobals)
-        if self.updateAnalysis.isChecked():
+        if gUpdateAnalysisOnRun:
             exec("bv.update_analysis_and_wait()", snippetGlobals)
         if "here" in snippetGlobals and hasattr(self.context, "address") and snippetGlobals['here'] != self.context.address:
             self.context.binaryView.file.navigate(self.context.binaryView.file.view, snippetGlobals['here'])
@@ -202,6 +208,7 @@ class Snippets(QDialog):
         self.closeButton = QPushButton(self.tr("Close"))
         self.updateAnalysis = QCheckBox(self.tr("Update analysis when run"))
         self.clearHotkeyButton = QPushButton(self.tr("Clear Hotkey"))
+        self.updateAnalysis.stateChanged.connect(self.setGlobalUpdateFlag)
         self.setWindowTitle(self.title.text())
         #self.newFolderButton = QPushButton("New Folder")
         self.browseButton = QPushButton("Browse Snippets")
@@ -338,6 +345,10 @@ class Snippets(QDialog):
         else:
             self.readOnly(True)
 
+    def setGlobalUpdateFlag(self):
+        """Update the "update analysis after run?" global variable."""
+        global gUpdateAnalysisOnRun
+        gUpdateAnalysisOnRun = self.updateAnalysis.isChecked()
 
     @staticmethod
     def registerAllSnippets():
