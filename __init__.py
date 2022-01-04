@@ -58,9 +58,8 @@ try:
     src_examples = os.path.join(os.path.dirname(os.path.realpath(__file__)), "update_example_snippets.py")
     if not os.path.exists(dst_examples):
         shutil.copy(src_examples, dst_examples)
-
 except IOError:
-    log_error("Unable to create %s or unable to add example updater" % snippetPath)
+    log_error("Unable to create %s or unable to add example updater, please report this bug" % snippetPath)
 
 
 def includeWalk(dir, includeExt):
