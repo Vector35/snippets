@@ -83,7 +83,7 @@ def loadSnippetFromFile(snippetPath):
         qKeySequence = QKeySequence(snippetText[1].strip()[1:])
         if qKeySequence.isEmpty():
             qKeySequence = None
-        return (snippetText[0].strip()[1:],
+        return (snippetText[0].strip()[1:].strip(),
                 qKeySequence,
                 ''.join(snippetText[2:])
         )
