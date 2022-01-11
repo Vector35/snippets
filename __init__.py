@@ -7,6 +7,8 @@ import codecs
 import getpass
 from collections import namedtuple
 from datetime import datetime
+from pathlib import Path
+
 import binaryninjaui
 from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, UIContext)
 if "qt_major_version" in binaryninjaui.__dict__ and binaryninjaui.qt_major_version == 6:
@@ -54,9 +56,11 @@ snippetPath = os.path.realpath(os.path.join(user_plugin_path(), "..", "snippets"
 try:
     if not os.path.exists(snippetPath):
         os.mkdir(snippetPath)
-    dst_examples = os.path.join(snippetPath, "update_example_snippets.py")
-    src_examples = os.path.join(os.path.dirname(os.path.realpath(__file__)), "update_example_snippets.py")
-    if not os.path.exists(dst_examples):
+    example_name = "update_example_snippets.py"
+    dst_examples = os.path.join(snippetPath, example_name)
+    rm_dst_examples = os.path.join(snippetPath, "." + example_name)
+    src_examples = os.path.join(os.path.dirname(os.path.realpath(__file__)), example_name)
+    if not os.path.exists(rm_dst_examples) and not os.path.exists(dst_examples):
         shutil.copy(src_examples, dst_examples)
 except IOError:
     log_error("Unable to create %s or unable to add example updater, please report this bug" % snippetPath)
@@ -488,6 +492,10 @@ class Snippets(QDialog):
         if (question == QMessageBox.StandardButton.Yes):
             log_debug("Snippets: Deleting snippet %s." % snippetName)
             self.clearSelection()
+            if snippetName == example_name:
+                question = QMessageBox.question(self, self.tr("Confirm"), self.tr("Should snippets prevent this file from being recreated?"))
+                if (question == QMessageBox.StandardButton.Yes):
+                    Path(rm_dst_examples).touch()
             self.files.remove(selection)
             self.registerAllSnippets()
 
@@ -692,6 +700,9 @@ This plugin is released under an [MIT license](./LICENSE).
 
 snippets = None
 
+def reloadActions(context):
+    Snippets.registerAllSnippets()
+
 def launchPlugin(context):
     global snippets
     if not snippets:
@@ -708,6 +719,6 @@ else:
     UIAction.registerAction("Snippets\\Snippet Editor...")
     UIAction.registerAction("Snippets\\Reload All Snippets")
     UIActionHandler.globalActions().bindAction("Snippets\\Snippet Editor...", UIAction(launchPlugin))
-    UIActionHandler.globalActions().bindAction("Snippets\\Reload All Snippets", UIAction(Snippets.registerAllSnippets))
+    UIActionHandler.globalActions().bindAction("Snippets\\Reload All Snippets", UIAction(reloadActions))
     Menu.mainMenu("Tools").addAction("Snippets\\Snippet Editor...", "Snippet")
     Menu.mainMenu("Tools").addAction("Snippets\\Reload All Snippets", "Snippet")
