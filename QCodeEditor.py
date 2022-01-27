@@ -21,9 +21,53 @@ else:
     from PySide2.QtWidgets import QWidget, QTextEdit, QPlainTextEdit
     from PySide2.QtGui import (QPainter, QFont, QSyntaxHighlighter, QTextFormat, QTextCharFormat, QColor, QTextCursor)
 from binaryninjaui import (getMonospaceFont, getThemeColor, ThemeColor)
-from pygments import highlight, token
-from pygments.lexers import *
-from pygments.formatter import Formatter
+try:
+    from pygments import highlight, token
+    from pygments.lexers import *
+    from pygments.formatter import Formatter
+
+    class QFormatter(Formatter):
+
+        def __init__(self):
+            Formatter.__init__(self)
+            self.pygstyles={}
+            for token, style in self.style:
+                tokenname = str(token)
+                if tokenname in bnstyles.keys():
+                    self.pygstyles[str(token)]=bnstyles[tokenname]
+                    #log_warn("MATCH: %s with %s" % (tokenname, str(token)))
+                else:
+                    self.pygstyles[str(token)]=bnstyles['Token.Name']
+                    #log_warn("NONE: %s with %s" % (tokenname, str(token)))
+
+        def format(self, tokensource, outfile):
+            self.data=[]
+            for token, value in tokensource:
+                self.data.extend([self.pygstyles[str(token)],]*len(value))
+
+    class Pylighter(QSyntaxHighlighter):
+
+        def __init__(self, parent, lang):
+            QSyntaxHighlighter.__init__(self, parent)
+            self.formatter=QFormatter()
+            self.lexer=get_lexer_by_name(lang)
+
+        def highlightBlock(self, text):
+            cb = self.currentBlock()
+            p = cb.position()
+            text=self.document().toPlainText()
+            highlight(text,self.lexer,self.formatter)
+            
+            #dirty, dirty hack
+            for i in range(len(text)):
+                try:
+                    self.setFormat(i,1,self.formatter.data[p+i])
+                except IndexError:
+                    pass
+
+except:
+    log_warn("Pygments not installed, no syntax highlighting enabled.")
+    Pylighter=None
 
 
 def bnformat(color, style=''):
@@ -102,45 +146,6 @@ bnstyles = {
     'blockSelected': getThemeColor(ThemeColor.TokenHighlightColor),
     'blockNormal': getThemeColor(ThemeColor.TokenSelectionColor),
 }
-
-class QFormatter(Formatter):
-
-    def __init__(self):
-        Formatter.__init__(self)
-        self.pygstyles={}
-        for token, style in self.style:
-            tokenname = str(token)
-            if tokenname in bnstyles.keys():
-                self.pygstyles[str(token)]=bnstyles[tokenname]
-                #log_warn("MATCH: %s with %s" % (tokenname, str(token)))
-            else:
-                self.pygstyles[str(token)]=bnstyles['Token.Name']
-                #log_warn("NONE: %s with %s" % (tokenname, str(token)))
-
-    def format(self, tokensource, outfile):
-        self.data=[]
-        for token, value in tokensource:
-            self.data.extend([self.pygstyles[str(token)],]*len(value))
-
-class Pylighter(QSyntaxHighlighter):
-
-    def __init__(self, parent, lang):
-        QSyntaxHighlighter.__init__(self, parent)
-        self.formatter=QFormatter()
-        self.lexer=get_lexer_by_name(lang)
-
-    def highlightBlock(self, text):
-        cb = self.currentBlock()
-        p = cb.position()
-        text=self.document().toPlainText()
-        highlight(text,self.lexer,self.formatter)
-        
-        #dirty, dirty hack
-        for i in range(len(text)):
-            try:
-                self.setFormat(i,1,self.formatter.data[p+i])
-            except IndexError:
-                pass
 
 
 class QCodeEditor(QPlainTextEdit):
