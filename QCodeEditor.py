@@ -55,7 +55,7 @@ try:
         def highlightBlock(self, text):
             cb = self.currentBlock()
             p = cb.position()
-            text=self.document().toPlainText()
+            text=self.document().toPlainText()+'\n'
             highlight(text,self.lexer,self.formatter)
             
             #dirty, dirty hack
