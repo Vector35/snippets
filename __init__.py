@@ -230,6 +230,10 @@ class Snippets(QDialog):
         self.snippetDescription = QLineEdit()
         self.snippetDescription.setPlaceholderText("optional description")
 
+        #Make disabled edit boxes visually distinct
+        self.setStyleSheet("QLineEdit:disabled, QCodeEditor:disabled { background-color: palette(window); }");
+
+
         #Set Editbox Size
         font = getMonospaceFont(self)
         self.edit.setFont(font)
