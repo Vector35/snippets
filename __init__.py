@@ -11,18 +11,11 @@ from pathlib import Path
 
 import binaryninjaui
 from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, UIContext)
-if "qt_major_version" in binaryninjaui.__dict__ and binaryninjaui.qt_major_version == 6:
-    from PySide6.QtWidgets import (QLineEdit, QPushButton, QApplication, QWidget,
-         QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
-         QInputDialog, QMessageBox, QHeaderView, QKeySequenceEdit, QCheckBox)
-    from PySide6.QtCore import (QDir, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl)
-    from PySide6.QtGui import (QFontMetrics, QDesktopServices, QKeySequence, QIcon)
-else:
-    from PySide2.QtWidgets import (QLineEdit, QPushButton, QApplication, QWidget,
-         QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
-         QInputDialog, QMessageBox, QHeaderView, QKeySequenceEdit, QCheckBox)
-    from PySide2.QtCore import (QDir, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl)
-    from PySide2.QtGui import (QFontMetrics, QDesktopServices, QKeySequence, QIcon)
+from PySide6.QtWidgets import (QLineEdit, QPushButton, QApplication, QWidget,
+     QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
+     QInputDialog, QMessageBox, QHeaderView, QKeySequenceEdit, QCheckBox)
+from PySide6.QtCore import (QDir, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl)
+from PySide6.QtGui import (QFontMetrics, QDesktopServices, QKeySequence, QIcon, QColor)
 from binaryninja import user_plugin_path, core_version
 from binaryninja.plugin import BackgroundTaskThread
 from binaryninja.log import (log_error, log_debug, log_alert, log_warn)
