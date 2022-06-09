@@ -359,7 +359,7 @@ class Snippets(QDialog):
             if action in ["Snippets\\Snippet Editor...", "Snippets\\Reload All Snippets"]:
                 continue
             UIActionHandler.globalActions().unbindAction(action)
-            Menu.mainMenu("Tools").removeAction(action)
+            Menu.mainMenu("Plugins").removeAction(action)
             UIAction.unregisterAction(action)
 
         for snippet in includeWalk(snippetPath, ".py"):
@@ -372,7 +372,7 @@ class Snippets(QDialog):
                 else:
                     UIAction.registerAction(actionText, snippetKeys)
                 UIActionHandler.globalActions().bindAction(actionText, UIAction(makeSnippetFunction(snippetCode, actionText)))
-                Menu.mainMenu("Tools").addAction(actionText, "Snippets")
+                Menu.mainMenu("Plugins").addAction(actionText, "Snippets")
 
     def clearSelection(self):
         self.keySequenceEdit.clear()
@@ -717,5 +717,5 @@ else:
     UIAction.registerAction("Snippets\\Reload All Snippets")
     UIActionHandler.globalActions().bindAction("Snippets\\Snippet Editor...", UIAction(launchPlugin))
     UIActionHandler.globalActions().bindAction("Snippets\\Reload All Snippets", UIAction(reloadActions))
-    Menu.mainMenu("Tools").addAction("Snippets\\Snippet Editor...", "Snippet")
-    Menu.mainMenu("Tools").addAction("Snippets\\Reload All Snippets", "Snippet")
+    Menu.mainMenu("Plugins").addAction("Snippets\\Snippet Editor...", "Snippet")
+    Menu.mainMenu("Plugins").addAction("Snippets\\Reload All Snippets", "Snippet")
