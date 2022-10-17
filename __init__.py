@@ -9,25 +9,24 @@ from collections import namedtuple
 from datetime import datetime
 from pathlib import Path
 
-import binaryninjaui
-from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, UIContext)
-from PySide6.QtWidgets import (QLineEdit, QPushButton, QApplication, QWidget,
-     QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
-     QInputDialog, QMessageBox, QHeaderView, QKeySequenceEdit, QCheckBox)
-from PySide6.QtCore import (QDir, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl)
-from PySide6.QtGui import (QFontMetrics, QDesktopServices, QKeySequence, QIcon, QColor)
 from binaryninja import user_plugin_path, core_version
 from binaryninja.plugin import BackgroundTaskThread
 from binaryninja.log import (log_error, log_debug, log_alert, log_warn)
 from binaryninja.settings import Settings
 from binaryninja.interaction import get_directory_name_input
-import numbers
+import binaryninjaui
+from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, UIContext)
+from PySide6.QtWidgets import (QLineEdit, QPushButton, QApplication, QWidget,
+     QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
+     QInputDialog, QMessageBox, QHeaderView, QKeySequenceEdit, QCheckBox, QMenu)
+from PySide6.QtCore import (QDir, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl)
+from PySide6.QtGui import (QFontMetrics, QDesktopServices, QKeySequence, QIcon, QColor, QAction)
 from .QCodeEditor import QCodeEditor, Pylighter
 
 Settings().register_group("snippets", "Snippets")
 Settings().register_setting("snippets.syntaxHighlight", """
     {
-        "title" : "Syntax highlighting for snippets",
+        "title" : "Syntax Highlighting",
         "type" : "boolean",
         "default" : true,
         "description" : "Whether to syntax highlight (may be performance problems with very large snippets and the current highlighting implementation.)",
@@ -36,7 +35,7 @@ Settings().register_setting("snippets.syntaxHighlight", """
     """)
 Settings().register_setting("snippets.indentation", """
     {
-        "title" : "Indentation Syntax highlighting for snippets",
+        "title" : "Indentation Syntax Highlighting",
         "type" : "string",
         "default" : "    ",
         "description" : "String to use for indentation in snippets (tip: to use a tab, copy/paste a tab from another text field and paste here)",
@@ -129,7 +128,7 @@ def setupGlobals(context):
         snippetGlobals['current_basic_block'] = None
     snippetGlobals['current_address'] = context.address
     snippetGlobals['here'] = context.address
-    if context.address is not None and isinstance(context.length, numbers.Integral):
+    if context.address is not None and isinstance(context.length, int):
         snippetGlobals['current_selection'] = (context.address, context.address+context.length)
     else:
         snippetGlobals['current_selection'] = None
@@ -249,6 +248,8 @@ class Snippets(QDialog):
         self.tree = QTreeView()
         self.tree.setModel(self.files)
         self.tree.setSortingEnabled(True)
+        self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tree.customContextMenuRequested.connect(self.contextMenu)
         self.tree.hideColumn(2)
         self.tree.sortByColumn(0, Qt.AscendingOrder)
         self.tree.setRootIndex(self.files.index(snippetPath))
@@ -496,6 +497,30 @@ class Snippets(QDialog):
             self.files.remove(selection)
             self.registerAllSnippets()
 
+    def duplicateSnippet(self):
+        selection = self.tree.selectedIndexes()[::self.columns][0] #treeview returns each selected element in the row
+        snippetName = self.files.fileName(selection)
+        (newname, ok) = QInputDialog.getText(self, self.tr("New Snippet Name"), self.tr("New Snippet Name:"))
+        if ok and snippetName:
+            (snippetDescription, snippetKeys, snippetCode) = loadSnippetFromFile(self.currentFile)
+            if not snippetName.endswith(".py"):
+                snippetName += ".py"
+            index = self.tree.selectionModel().currentIndex()
+            selection = self.files.filePath(index)
+            if QFileInfo(selection).isDir():
+                path = os.path.join(selection, snippetName)
+            else:
+                path = os.path.join(snippetPath, snippetName)
+                self.readOnly(False)
+            open(path, "w").close()
+            self.snippetName.setText(os.path.basename(self.currentFile))
+            self.snippetDescription.setText(snippetDescription) if snippetDescription else self.snippetDescription.setText("")
+            self.keySequenceEdit.setKeySequence(snippetKeys) if snippetKeys else self.keySequenceEdit.setKeySequence(QKeySequence(""))
+            self.edit.setPlainText(snippetCode) if snippetCode else self.edit.setPlainText("")
+            self.save()
+            self.tree.setCurrentIndex(self.files.index(path))
+            self.registerAllSnippets()
+
     def snippetChanged(self):
         if (self.currentFile == "" or QFileInfo(self.currentFile).isDir()):
             return False
@@ -690,6 +715,14 @@ This plugin is released under an [MIT license](./LICENSE).
 
     def clearHotkey(self):
         self.keySequenceEdit.clear()
+
+    def contextMenu(self, position):
+        menu = QMenu()
+        delete = menu.addAction("Delete")
+        delete.triggered.connect(self.deleteSnippet)
+        duplicate = menu.addAction("Duplicate")
+        duplicate.triggered.connect(self.duplicateSnippet)
+        menu.exec_(self.mapToGlobal(position))
 
 
 snippets = None
