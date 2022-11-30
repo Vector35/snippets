@@ -577,16 +577,20 @@ class Snippets(QDialog):
                 return
 
         folder = get_directory_name_input("Where would you like the plugin saved?", user_plugin_path())
-        if self.snippetName.text() == "" or self.snippetDescription.text() == "":
-            #TODO: Prompt user for description if missing
-            log_alert("Snippets must have a name and description to be exported")
+
+        if self.snippetName.text() == "":
+            log_alert("Snippets must have a name")
             return
 
-        description = self.snippetDescription.text()
         name = self.snippetName.text()
         if name.endswith('.py'):
             name = name[:-3]
-        #TODO: Form allowing input of multiple options such as user
+
+        if self.snippetDescription.text() == "":
+            description = name
+        else:
+            description = self.snippetDescription.text()
+
         user = getpass.getuser()
         version = "2846"
         if core_version().count('.') == 2:
