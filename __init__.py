@@ -195,7 +195,7 @@ class Snippets(QDialog):
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.title = QLabel(self.tr("Snippet Editor"))
         self.saveButton = QPushButton(self.tr("&Save"))
-        self.saveButton.setShortcut(QKeySequence(self.tr("Ctrl+S")))
+        self.saveButton.setShortcut(QKeySequence(self.tr("Ctrl+Shift+S")))
         self.exportButton = QPushButton(self.tr("&Export to plugin"))
         self.exportButton.setShortcut(QKeySequence(self.tr("Ctrl+E")))
         self.runButton = QPushButton(self.tr("&Run"))
