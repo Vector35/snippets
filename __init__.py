@@ -158,8 +158,12 @@ def executeSnippet(code, description):
     SnippetTask(code, snippetGlobals, context, snippetName=description).start()
 
 
-def makeSnippetFunction(code, description):
-    return lambda context: executeSnippet(code, description)
+def makeSnippetFunction(snippet):
+    def execute():
+        (snippetDescription, snippetKeys, snippetCode) = loadSnippetFromFile(snippet)
+        actionText = actionFromSnippet(snippet, snippetDescription)
+        executeSnippet(snippetCode, actionText)
+    return lambda context: execute()
 
 # Global variable to indicate if analysis should be updated after a snippet is run
 gUpdateAnalysisOnRun = False
@@ -369,7 +373,7 @@ class Snippets(QDialog):
                     UIAction.registerAction(actionText)
                 else:
                     UIAction.registerAction(actionText, snippetKeys)
-                UIActionHandler.globalActions().bindAction(actionText, UIAction(makeSnippetFunction(snippetCode, actionText)))
+                UIActionHandler.globalActions().bindAction(actionText, UIAction(makeSnippetFunction(snippet)))
                 Menu.mainMenu("Plugins").addAction(actionText, "Snippets")
 
     def clearSelection(self):
