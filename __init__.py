@@ -158,12 +158,23 @@ def executeSnippet(code, description):
     SnippetTask(code, snippetGlobals, context, snippetName=description).start()
 
 
+lastSnippet = None
 def makeSnippetFunction(snippet):
     def execute():
+        global lastSnippet
+        lastSnippet = snippet
+
         (snippetDescription, snippetKeys, snippetCode) = loadSnippetFromFile(snippet)
         actionText = actionFromSnippet(snippet, snippetDescription)
         executeSnippet(snippetCode, actionText)
     return lambda context: execute()
+
+
+def rerunLastSnippet(context):
+    global lastSnippet
+    if lastSnippet is not None:
+        makeSnippetFunction(lastSnippet)(context)
+
 
 # Global variable to indicate if analysis should be updated after a snippet is run
 gUpdateAnalysisOnRun = False
@@ -752,8 +763,11 @@ if __name__ == '__main__':
 else:
     Snippets.registerAllSnippets()
     UIAction.registerAction("Snippets\\Snippet Editor...")
+    UIAction.registerAction("Snippets\\Rerun Last Snippet")
     UIAction.registerAction("Snippets\\Reload All Snippets")
     UIActionHandler.globalActions().bindAction("Snippets\\Snippet Editor...", UIAction(launchPlugin))
+    UIActionHandler.globalActions().bindAction("Snippets\\Rerun Last Snippet", UIAction(rerunLastSnippet))
     UIActionHandler.globalActions().bindAction("Snippets\\Reload All Snippets", UIAction(reloadActions))
     Menu.mainMenu("Plugins").addAction("Snippets\\Snippet Editor...", "Snippet")
+    Menu.mainMenu("Plugins").addAction("Snippets\\Rerun Last Snippet", "Snippet")
     Menu.mainMenu("Plugins").addAction("Snippets\\Reload All Snippets", "Snippet")
