@@ -98,34 +98,24 @@ def setupGlobals(context):
     snippetGlobals = {}
     snippetGlobals['current_view'] = context.binaryView
     snippetGlobals['bv'] = context.binaryView
-    if not context.function:
-        if not context.lowLevelILFunction:
-            if not context.mediumLevelILFunction:
-                snippetGlobals['current_hlil'] = None
-                snippetGlobals['current_mlil'] = None
-                snippetGlobals['current_function'] = None
-                snippetGlobals['current_llil'] = None
-            else:
-                snippetGlobals['current_mlil'] = context.mediumLevelILFunction
-                snippetGlobals['current_function'] = context.mediumLevelILFunction.source_function
-                snippetGlobals['current_llil'] = context.mediumLevelILFunction.source_function.llil
-                snippetGlobals['current_hlil'] = context.mediumLevelILFunction.source_function.hlil
-        else:
-            snippetGlobals['current_llil'] = context.lowLevelILFunction
-            snippetGlobals['current_function'] = context.lowLevelILFunction.source_function
-            snippetGlobals['current_mlil'] = context.lowLevelILFunction.source_function.mlil
-            snippetGlobals['current_hlil'] = context.lowLevelILFunction.source_function.hlil
-    else:
+    snippetGlobals['current_token'] = None
+    snippetGlobals['current_hlil'] = None
+    snippetGlobals['current_mlil'] = None
+    snippetGlobals['current_function'] = None
+    snippetGlobals['current_llil'] = None
+
+    if context.function:
         snippetGlobals['current_function'] = context.function
         snippetGlobals['current_mlil'] = context.function.mlil
         snippetGlobals['current_hlil'] = context.function.hlil
         snippetGlobals['current_llil'] = context.function.llil
-        snippetGlobals['current_token'] = context.function.llil
-
-    if context.function is not None:
+        if context.token:
+            # Doubly nested because the first token is a HighlightTokenState
+            snippetGlobals['current_token'] = context.token
         snippetGlobals['current_basic_block'] = context.function.get_basic_block_at(context.address)
     else:
         snippetGlobals['current_basic_block'] = None
+
     snippetGlobals['current_address'] = context.address
     snippetGlobals['here'] = context.address
     if context.address is not None and isinstance(context.length, int):
