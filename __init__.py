@@ -9,17 +9,17 @@ from collections import namedtuple
 from datetime import datetime
 from pathlib import Path
 
-from binaryninja import user_plugin_path, core_version
+from binaryninja import user_plugin_path, core_version, execute_on_main_thread_and_wait
 from binaryninja.plugin import BackgroundTaskThread
 from binaryninja.log import (log_error, log_debug, log_alert, log_warn)
 from binaryninja.settings import Settings
 from binaryninja.interaction import get_directory_name_input
-import binaryninjaui
 from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, UIContext)
 from PySide6.QtWidgets import (QLineEdit, QPushButton, QApplication, QWidget,
      QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
      QInputDialog, QMessageBox, QHeaderView, QKeySequenceEdit, QCheckBox, QMenu)
-from PySide6.QtCore import (QDir, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl)
+from PySide6.QtCore import (QDir, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl,
+                            QFileSystemWatcher,QObject, Signal, Slot)
 from PySide6.QtGui import (QFontMetrics, QDesktopServices, QKeySequence, QIcon, QColor, QAction)
 from .QCodeEditor import QCodeEditor, Pylighter
 
@@ -205,7 +205,7 @@ class Snippets(QDialog):
         self.exportButton.setShortcut(QKeySequence(self.tr("Ctrl+E")))
         self.runButton = QPushButton(self.tr("&Run"))
         self.runButton.setShortcut(QKeySequence(self.tr("Ctrl+R")))
-        self.closeButton = QPushButton(self.tr("Close"))
+        self.editButton = QPushButton(self.tr("Open in Editor"))
         self.updateAnalysis = QCheckBox(self.tr("Update analysis when run"))
         self.clearHotkeyButton = QPushButton(self.tr("Clear Hotkey"))
         self.updateAnalysis.stateChanged.connect(self.setGlobalUpdateFlag)
@@ -215,6 +215,9 @@ class Snippets(QDialog):
         self.browseButton.setIcon(QIcon.fromTheme("edit-undo"))
         self.deleteSnippetButton = QPushButton("Delete")
         self.newSnippetButton = QPushButton("New Snippet")
+        self.watcher = QFileSystemWatcher()
+        self.watcher.addPath(snippetPath)
+        self.watcher.directoryChanged.connect(self.snippetDirectoryChanged)
         indentation = Settings().get_string("snippets.indentation")
         if Settings().get_bool("snippets.syntaxHighlight"):
             self.edit = QCodeEditor(SyntaxHighlighter=Pylighter, delimeter = indentation)
@@ -283,7 +286,7 @@ class Snippets(QDialog):
 
         buttons = QHBoxLayout()
         buttons.addWidget(self.exportButton)
-        buttons.addWidget(self.closeButton)
+        buttons.addWidget(self.editButton)
         buttons.addWidget(self.runButton)
         buttons.addWidget(self.saveButton)
 
@@ -327,7 +330,7 @@ class Snippets(QDialog):
 
         # Add signals
         self.saveButton.clicked.connect(self.save)
-        self.closeButton.clicked.connect(self.close)
+        self.editButton.clicked.connect(self.editor)
         self.runButton.clicked.connect(self.run)
         self.exportButton.clicked.connect(self.export)
         self.clearHotkeyButton.clicked.connect(self.clearHotkey)
@@ -526,6 +529,11 @@ class Snippets(QDialog):
             self.tree.setCurrentIndex(self.files.index(path))
             self.registerAllSnippets()
 
+    def snippetDirectoryChanged(self):
+        # reload UI and reload snippets
+        self.registerAllSnippets()
+        self.loadSnippet()
+
     def snippetChanged(self):
         if (self.currentFile == "" or QFileInfo(self.currentFile).isDir()):
             return False
@@ -552,7 +560,13 @@ class Snippets(QDialog):
         outputSnippet.write("#" + self.keySequenceEdit.keySequence().toString() + "\n")
         outputSnippet.write(self.edit.toPlainText())
         outputSnippet.close()
-        self.registerAllSnippets()
+        # Redundant because of file watcher
+        #self.registerAllSnippets()
+
+    def editor(self):
+        # Open in external editor
+        path = QUrl.fromLocalFile(self.currentFile)
+        QDesktopServices.openUrl(path)
 
     def run(self):
         if self.context == None:
@@ -736,7 +750,7 @@ This plugin is released under an [MIT license](./LICENSE).
 
 snippets = None
 
-def reloadActions(context):
+def reloadActions(_):
     Snippets.registerAllSnippets()
 
 def launchPlugin(context):
