@@ -4,7 +4,7 @@
 Licensed under the terms of the MIT License
 
 Re-written for Snippet Editor by Jordan Wiens (https://github.com/psifertex/)
-With some original components (line numbers) based on: 
+With some original components (line numbers) based on:
 
 https://github.com/luchko/QCodeEditor
 @author: Ivan Luchko (luchko.ivan@gmail.com)
@@ -57,7 +57,7 @@ try:
             p = cb.position()
             text=self.document().toPlainText()+' \n'
             highlight(text,self.lexer,self.formatter)
-            
+
             #dirty, dirty hack
             for i in range(len(text)):
                 try:
@@ -83,7 +83,7 @@ def bnformat(color, style=''):
 
     return format
 
-# Most of these aren't needed but after fighting pygments for so long I figure they can't hurt. 
+# Most of these aren't needed but after fighting pygments for so long I figure they can't hurt.
 bnstyles = {
     'Token.Literal.Number': bnformat('NumberColor'),
     'Token.Literal.Number.Bin': bnformat('NumberColor'),
@@ -116,7 +116,7 @@ bnstyles = {
     'Token.Punctuation': bnformat('UncertainColor'),
 
     #This is the most important and hardest to get right. No way to get theme palettes!
-    'Token.Name': bnformat('OutlineColor'), 
+    'Token.Name': bnformat('OutlineColor'),
 
     'Token.Name.Namespace': bnformat('OutlineColor'),
 
