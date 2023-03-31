@@ -219,6 +219,7 @@ class Snippets(QDialog):
         self.watcher = QFileSystemWatcher()
         self.watcher.addPath(snippetPath)
         self.watcher.directoryChanged.connect(self.snippetDirectoryChanged)
+        self.watcher.fileChanged.connect(self.snippetDirectoryChanged)
         indentation = Settings().get_string("snippets.indentation")
         if Settings().get_bool("snippets.syntaxHighlight"):
             self.edit = QCodeEditor(SyntaxHighlighter=Pylighter, delimeter = indentation)
@@ -389,6 +390,7 @@ class Snippets(QDialog):
         self.snippetDescription.setText("")
         self.edit.clear()
         self.tree.clearSelection()
+        self.watcher.removePath(self.currentFile)
         self.currentFile = ""
 
     def askSave(self):
@@ -427,7 +429,6 @@ class Snippets(QDialog):
             return
         if len(new.indexes()) == 0:
             self.clearSelection()
-            self.currentFile = ""
             self.readOnly(True)
             return
         newSelection = self.files.filePath(new.indexes()[0])
@@ -435,7 +436,6 @@ class Snippets(QDialog):
         if QFileInfo(newSelection).isDir():
             self.readOnly(True)
             self.clearSelection()
-            self.currentFile = ""
             return
 
         if old and old.length() > 0:
@@ -451,7 +451,10 @@ class Snippets(QDialog):
                     self.tree.selectionModel().select(old, QItemSelectionModel.ClearAndSelect | QItemSelectionModel.Rows)
                     return False
 
+        if self.currentFile:
+            self.watcher.removePath(self.currentFile)
         self.currentFile = newSelection
+        self.watcher.addPath(self.currentFile)
         self.loadSnippet()
 
     def loadSnippet(self):
@@ -760,19 +763,13 @@ def launchPlugin(context):
         snippets = Snippets(context, parent=context.widget)
     snippets.show()
 
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    snippets = Snippets(None)
-    snippets.show()
-    sys.exit(app.exec_())
-else:
-    Snippets.registerAllSnippets()
-    UIAction.registerAction("Snippets\\Snippet Editor...")
-    UIAction.registerAction("Snippets\\Rerun Last Snippet")
-    UIAction.registerAction("Snippets\\Reload All Snippets")
-    UIActionHandler.globalActions().bindAction("Snippets\\Snippet Editor...", UIAction(launchPlugin))
-    UIActionHandler.globalActions().bindAction("Snippets\\Rerun Last Snippet", UIAction(rerunLastSnippet))
-    UIActionHandler.globalActions().bindAction("Snippets\\Reload All Snippets", UIAction(reloadActions))
-    Menu.mainMenu("Plugins").addAction("Snippets\\Snippet Editor...", "Snippet")
-    Menu.mainMenu("Plugins").addAction("Snippets\\Rerun Last Snippet", "Snippet")
-    Menu.mainMenu("Plugins").addAction("Snippets\\Reload All Snippets", "Snippet")
+Snippets.registerAllSnippets()
+UIAction.registerAction("Snippets\\Snippet Editor...")
+UIAction.registerAction("Snippets\\Rerun Last Snippet")
+UIAction.registerAction("Snippets\\Reload All Snippets")
+UIActionHandler.globalActions().bindAction("Snippets\\Snippet Editor...", UIAction(launchPlugin))
+UIActionHandler.globalActions().bindAction("Snippets\\Rerun Last Snippet", UIAction(rerunLastSnippet))
+UIActionHandler.globalActions().bindAction("Snippets\\Reload All Snippets", UIAction(reloadActions))
+Menu.mainMenu("Plugins").addAction("Snippets\\Snippet Editor...", "Snippet")
+Menu.mainMenu("Plugins").addAction("Snippets\\Rerun Last Snippet", "Snippet")
+Menu.mainMenu("Plugins").addAction("Snippets\\Reload All Snippets", "Snippet")
