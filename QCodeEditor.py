@@ -13,16 +13,16 @@ https://github.com/luchko/QCodeEditor
 import binaryninjaui
 from binaryninja import log_warn, bncompleter
 if "qt_major_version" in binaryninjaui.__dict__ and binaryninjaui.qt_major_version == 6:
-    from PySide6.QtCore import Qt, QRect, QRegularExpression
-    from PySide6.QtWidgets import QWidget, QTextEdit, QPlainTextEdit
-    from PySide6.QtGui import (QPainter, QFont, QSyntaxHighlighter, QTextFormat, QTextCharFormat, QColor, QTextCursor)
+    from PySide6.QtCore import Qt, QRect
+    from PySide6.QtWidgets import QWidget, QPlainTextEdit
+    from PySide6.QtGui import (QPainter, QFont, QSyntaxHighlighter, QTextCharFormat, QTextCursor)
 else:
-    from PySide2.QtCore import Qt, QRect, QRegularExpression
-    from PySide2.QtWidgets import QWidget, QTextEdit, QPlainTextEdit
-    from PySide2.QtGui import (QPainter, QFont, QSyntaxHighlighter, QTextFormat, QTextCharFormat, QColor, QTextCursor)
+    from PySide2.QtCore import Qt, QRect
+    from PySide2.QtWidgets import QWidget, QPlainTextEdit
+    from PySide2.QtGui import (QPainter, QFont, QSyntaxHighlighter, QTextCharFormat, QTextCursor)
 from binaryninjaui import (getMonospaceFont, getThemeColor, ThemeColor)
 try:
-    from pygments import highlight, token
+    from pygments import highlight
     from pygments.lexers import *
     from pygments.formatter import Formatter
 
