@@ -17,10 +17,11 @@ from binaryninja.interaction import get_directory_name_input
 from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, UIContext)
 from PySide6.QtWidgets import (QLineEdit, QPushButton, QApplication, QWidget,
      QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
-     QInputDialog, QMessageBox, QHeaderView, QKeySequenceEdit, QCheckBox, QMenu)
+     QInputDialog, QMessageBox, QHeaderView, QKeySequenceEdit, QCheckBox, QMenu, QAbstractItemView)
 from PySide6.QtCore import (QDir, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl,
                             QFileSystemWatcher,QObject, Signal, Slot)
-from PySide6.QtGui import (QFontMetrics, QDesktopServices, QKeySequence, QIcon, QColor, QAction)
+from PySide6.QtGui import (QFontMetrics, QDesktopServices, QKeySequence, QIcon, QColor, QAction,
+                           QCursor)
 from .QCodeEditor import QCodeEditor, Pylighter
 
 Settings().register_group("snippets", "Snippets")
@@ -252,11 +253,14 @@ class Snippets(QDialog):
         #Files
         self.files = QFileSystemModel()
         self.files.setRootPath(snippetPath)
-        self.files.setNameFilters(["*.py"])
+        self.files.setReadOnly(False)
 
         #Tree
         self.tree = QTreeView()
         self.tree.setModel(self.files)
+        self.tree.setDragDropMode(QAbstractItemView.InternalMove)
+        self.tree.setDragEnabled(True)
+        self.tree.setDefaultDropAction(Qt.MoveAction)
         self.tree.setSortingEnabled(True)
         self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self.contextMenu)
@@ -389,7 +393,6 @@ class Snippets(QDialog):
         self.snippetName.setText("")
         self.snippetDescription.setText("")
         self.edit.clear()
-        self.tree.clearSelection()
         self.watcher.removePath(self.currentFile)
         self.currentFile = ""
 
@@ -434,8 +437,8 @@ class Snippets(QDialog):
         newSelection = self.files.filePath(new.indexes()[0])
         self.settings.setValue("ui/snippeteditor/selected", newSelection)
         if QFileInfo(newSelection).isDir():
-            self.readOnly(True)
             self.clearSelection()
+            self.readOnly(True)
             return
 
         if old and old.length() > 0:
@@ -498,9 +501,13 @@ class Snippets(QDialog):
     def deleteSnippet(self):
         selection = self.tree.selectedIndexes()[::self.columns][0] #treeview returns each selected element in the row
         snippetName = self.files.fileName(selection)
-        question = QMessageBox.question(self, self.tr("Confirm"), self.tr("Confirm deletion: ") + snippetName)
+        if self.files.isDir(selection):
+            questionText = self.tr("Confirm deletion of folder AND ALL CONTENTS: ")
+        else:
+            questionText = self.tr("Confirm deletion of snippet: ")
+        question = QMessageBox.question(self, self.tr("Confirm"), questionText + snippetName)
         if (question == QMessageBox.StandardButton.Yes):
-            log_debug("Snippets: Deleting snippet %s." % snippetName)
+            log_debug("Snippets: Deleting %s." % snippetName)
             self.clearSelection()
             if snippetName == example_name:
                 question = QMessageBox.question(self, self.tr("Confirm"), self.tr("Should snippets prevent this file from being recreated?"))
@@ -749,7 +756,9 @@ This plugin is released under an [MIT license](./LICENSE).
         delete.triggered.connect(self.deleteSnippet)
         duplicate = menu.addAction("Duplicate")
         duplicate.triggered.connect(self.duplicateSnippet)
-        menu.exec_(self.mapToGlobal(position))
+        newFolder = menu.addAction("New Folder")
+        newFolder.triggered.connect(self.newFolder)
+        menu.exec_(QCursor.pos())
 
 
 snippets = None
