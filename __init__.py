@@ -768,7 +768,15 @@ def reloadActions(_):
 
 def launchPlugin(context):
     global snippets
-    if not snippets:
+    # Terrible hack to fix Shiboken freeing the object when snippets
+    # is launched after a binary view is open instead of before
+    # TODO: Fix this properly
+    if snippets:
+        try:
+            snippets.close()
+        except:
+            snippets = Snippets(context, parent=context.widget)
+    else:
         snippets = Snippets(context, parent=context.widget)
     snippets.show()
 
