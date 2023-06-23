@@ -19,9 +19,9 @@ from PySide6.QtWidgets import (QLineEdit, QPushButton, QApplication, QWidget,
      QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
      QInputDialog, QMessageBox, QHeaderView, QKeySequenceEdit, QCheckBox, QMenu, QAbstractItemView)
 from PySide6.QtCore import (QDir, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl,
-                            QFileSystemWatcher,QObject, Signal, Slot)
+                            QFileSystemWatcher, QObject, Signal, Slot)
 from PySide6.QtGui import (QFontMetrics, QDesktopServices, QKeySequence, QIcon, QColor, QAction,
-                           QCursor)
+                           QCursor, QGuiApplication)
 from .QCodeEditor import QCodeEditor, Pylighter
 
 Settings().register_group("snippets", "Snippets")
@@ -273,7 +273,6 @@ class Snippets(QDialog):
         treeLayout = QVBoxLayout()
         treeLayout.addWidget(self.tree)
         treeButtons = QHBoxLayout()
-        #treeButtons.addWidget(self.newFolderButton)
         treeButtons.addWidget(self.browseButton)
         treeButtons.addWidget(self.newSnippetButton)
         treeButtons.addWidget(self.deleteSnippetButton)
@@ -343,7 +342,6 @@ class Snippets(QDialog):
         self.tree.selectionModel().selectionChanged.connect(self.selectFile)
         self.newSnippetButton.clicked.connect(self.newFileDialog)
         self.deleteSnippetButton.clicked.connect(self.deleteSnippet)
-        #self.newFolderButton.clicked.connect(self.newFolder)
         self.browseButton.clicked.connect(self.browseSnippets)
 
         if self.settings.contains("ui/snippeteditor/selected"):
@@ -425,6 +423,12 @@ class Snippets(QDialog):
                 QDir(selection).mkdir(folderName)
             else:
                 QDir(snippetPath).mkdir(folderName)
+
+    def copyPath(self):
+        index = self.tree.selectionModel().currentIndex()
+        selection = self.files.filePath(index)
+        clip = QGuiApplication.clipboard()
+        clip.setText(selection)
 
     def selectFile(self, new, old):
         if (self.resetting):
@@ -758,6 +762,8 @@ This plugin is released under an [MIT license](./LICENSE).
         duplicate.triggered.connect(self.duplicateSnippet)
         newFolder = menu.addAction("New Folder")
         newFolder.triggered.connect(self.newFolder)
+        copyPath = menu.addAction("Copy Path")
+        copyPath.triggered.connect(self.copyPath)
         menu.exec_(QCursor.pos())
 
 
