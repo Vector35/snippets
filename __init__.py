@@ -251,6 +251,7 @@ class Snippets(QDialog):
         self.edit.setFont(font)
         font = QFontMetrics(font)
         self.edit.setTabStopDistance(4 * font.horizontalAdvance(' ')) #TODO, replace with settings API
+        self.edit.minimumHeight = font.height() * 20
 
         #Files
         self.files = QFileSystemModel()
