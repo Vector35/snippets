@@ -470,7 +470,9 @@ class Snippets(QDialog):
         self.snippetName.setText(os.path.basename(self.currentFile))
         self.snippetDescription.setText(snippetDescription) if snippetDescription else self.snippetDescription.setText("")
         self.keySequenceEdit.setKeySequence(snippetKeys) if snippetKeys else self.keySequenceEdit.setKeySequence(QKeySequence(""))
+        delimeter = "   " if snippetCode.count("    ") > snippetCode.count("\t") else "\t"
         self.edit.setPlainText(snippetCode) if snippetCode else self.edit.setPlainText("")
+        self.edit.setDelimeter(delimeter)
         self.readOnly(False)
 
     def newFileDialog(self):

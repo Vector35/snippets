@@ -257,6 +257,9 @@ class QCodeEditor(QPlainTextEdit):
             return True
         return False
 
+    def setDelimeter(self, delimeter):
+        self.deliemter = delimeter;
+
     def replaceBlockAtCursor(self, newText):
         cursor=self.textCursor()
         cursor.select(QTextCursor.BlockUnderCursor)
