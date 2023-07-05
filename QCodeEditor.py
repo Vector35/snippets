@@ -186,9 +186,9 @@ class QCodeEditor(QPlainTextEdit):
                     painter.setPen(bnstyles["blockNormal"])
                 painter.setFont(self.font)
 
-                # Draw the line number right justified at the position of the line.
+                # Draw the line number left justified at the position of the line.
                 paint_rect = QRect(0, block_top, self.width(), self.editor.fontMetrics().height())
-                painter.drawText(paint_rect, Qt.AlignLeft, str(blockNumber+3)) # Offset so that the lines are correct to the file
+                painter.drawText(paint_rect, Qt.AlignLeft, str(blockNumber + 3)) # Offset so that the lines are correct to the file
 
                 block = block.next()
 
