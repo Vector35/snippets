@@ -158,7 +158,7 @@ class QCodeEditor(QPlainTextEdit):
             self.editor = editor
             self.editor.blockCountChanged.connect(self.updateWidth)
             self.editor.updateRequest.connect(self.updateContents)
-            self.font = editor.font()
+            self.font = editor.currentCharFormat().font()
             self.numberBarColor = bnstyles["numberBar"]
             self.updateWidth()
 
@@ -214,9 +214,6 @@ class QCodeEditor(QPlainTextEdit):
                 self.update(0, rect.y(), self.width(), rect.height())
 
             if rect.contains(self.editor.viewport().rect()):
-                fontSize = self.editor.currentCharFormat().font().pointSize()
-                self.font.setPointSize(fontSize)
-                self.font.setStyle(QFont.StyleNormal)
                 self.updateWidth()
 
 
