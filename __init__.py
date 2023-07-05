@@ -95,7 +95,7 @@ def actionFromSnippet(snippetName, snippetDescription):
     else:
         return "Snippets\\" + snippetDescription
 
-def setupGlobals(context):
+def setupGlobals(context, ctx):
     snippetGlobals = {}
     snippetGlobals['current_view'] = context.binaryView
     snippetGlobals['bv'] = context.binaryView
@@ -124,6 +124,7 @@ def setupGlobals(context):
     else:
         snippetGlobals['current_selection'] = None
     snippetGlobals['uicontext'] = context
+    snippetGlobals['context'] = ctx
     return snippetGlobals
 
 
@@ -144,7 +145,7 @@ def executeSnippet(code, description):
         else:
             context = namedtuple("context", dummycontext.keys())(*dummycontext.values())
 
-    snippetGlobals = setupGlobals(context)
+    snippetGlobals = setupGlobals(context, ctx)
 
     SnippetTask(code, snippetGlobals, context, snippetName=description).start()
 
