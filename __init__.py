@@ -157,6 +157,7 @@ def makeSnippetFunction(snippet):
 
         (snippetDescription, snippetKeys, snippetCode) = loadSnippetFromFile(snippet)
         snippetCode = "# \n# \n" + snippetCode
+        snippetCode = compile(snippetCode, snippet, 'exec')
         actionText = actionFromSnippet(snippet, snippetDescription)
         executeSnippet(snippetCode, actionText)
     return lambda context: execute()
