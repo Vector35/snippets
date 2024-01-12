@@ -593,13 +593,7 @@ class Snippets(QDialog):
         actionText = actionFromSnippet(self.currentFile, self.snippetDescription.text())
         UIActionHandler.globalActions().executeAction(actionText, self.context)
 
-        log_debug("Snippets: Saving snippet %s" % self.currentFile)
-        outputSnippet = codecs.open(self.currentFile, "w", "utf-8")
-        outputSnippet.write("#" + self.snippetDescription.text() + "\n")
-        outputSnippet.write("#" + self.keySequenceEdit.keySequence().toString() + "\n")
-        outputSnippet.write(self.edit.toPlainText())
-        outputSnippet.close()
-        self.registerAllSnippets()
+        self.save()
 
     def export(self):
         if self.snippetChanged():
