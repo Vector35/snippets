@@ -594,6 +594,7 @@ class Snippets(QDialog):
         UIActionHandler.globalActions().executeAction(actionText, self.context)
 
         self.save()
+        self.registerAllSnippets()
 
     def export(self):
         if self.snippetChanged():
