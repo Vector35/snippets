@@ -14,6 +14,8 @@ from binaryninja.plugin import BackgroundTaskThread
 from binaryninja.log import (log_error, log_debug, log_alert, log_warn)
 from binaryninja.settings import Settings
 from binaryninja.interaction import get_directory_name_input
+from binaryninja.variable import Variable
+from binaryninja.enums import FunctionGraphType
 from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, UIContext)
 from PySide6.QtWidgets import (QLineEdit, QPushButton, QApplication, QWidget,
      QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
@@ -95,36 +97,94 @@ def actionFromSnippet(snippetName, snippetDescription):
     else:
         return "Snippets\\" + snippetDescription
 
-def setupGlobals(context, ctx):
+def setupGlobals(uiactioncontext, uicontext):
     snippetGlobals = {}
-    snippetGlobals['current_view'] = context.binaryView
-    snippetGlobals['bv'] = context.binaryView
+    snippetGlobals['current_view'] = uiactioncontext.binaryView
+    snippetGlobals['bv'] = uiactioncontext.binaryView
     snippetGlobals['current_token'] = None
     snippetGlobals['current_hlil'] = None
     snippetGlobals['current_mlil'] = None
     snippetGlobals['current_function'] = None
     snippetGlobals['current_llil'] = None
 
-    if context.function:
-        snippetGlobals['current_function'] = context.function
-        snippetGlobals['current_mlil'] = context.function.mlil
-        snippetGlobals['current_hlil'] = context.function.hlil
-        snippetGlobals['current_llil'] = context.function.llil
-        if context.token:
+    action_handler = None
+    view_frame = None
+    view = None
+    if uicontext is not None:
+        action_handler = uicontext.getCurrentActionHandler()
+        view_frame = uicontext.getCurrentViewFrame()
+        view = uicontext.getCurrentView()
+
+    view_location = view_frame.getViewLocation() if view_frame is not None else None
+
+    if view is not None:
+        snippetGlobals['current_il_index'] = view.getSelectionStartILInstructionIndex()
+
+    view_location = view_frame.getViewLocation() if view_frame is not None else None
+
+    if uiactioncontext.function:
+        snippetGlobals['current_function'] = uiactioncontext.function
+        snippetGlobals['current_mlil'] = uiactioncontext.function.mlil_if_available
+        snippetGlobals['current_hlil'] = uiactioncontext.function.hlil_if_available
+        snippetGlobals['current_llil'] = uiactioncontext.function.llil_if_available
+        if uiactioncontext.token:
             # Doubly nested because the first token is a HighlightTokenState
-            snippetGlobals['current_token'] = context.token
-        snippetGlobals['current_basic_block'] = context.function.get_basic_block_at(context.address)
+            snippetGlobals['current_token'] = uiactioncontext.token
+        snippetGlobals['current_basic_block'] = uiactioncontext.function.get_basic_block_at(uiactioncontext.address)
     else:
         snippetGlobals['current_basic_block'] = None
 
-    snippetGlobals['current_address'] = context.address
-    snippetGlobals['here'] = context.address
-    if context.address is not None and isinstance(context.length, int):
-        snippetGlobals['current_selection'] = (context.address, context.address+context.length)
+    snippetGlobals['current_address'] = uiactioncontext.address
+    if uiactioncontext.binaryView is not None and uiactioncontext.address is not None:
+        snippetGlobals['current_raw_offset'] = uiactioncontext.binaryView.get_data_offset_for_address(uiactioncontext.address)
+    else:
+        snippetGlobals['current_raw_offset'] = None
+
+    snippetGlobals['here'] = uiactioncontext.address
+    if uiactioncontext.address is not None and isinstance(uiactioncontext.length, int):
+        snippetGlobals['current_selection'] = (uiactioncontext.address, uiactioncontext.address+uiactioncontext.length)
     else:
         snippetGlobals['current_selection'] = None
-    snippetGlobals['uicontext'] = context
-    snippetGlobals['context'] = ctx
+    snippetGlobals['current_ui_action_context'] = uiactioncontext
+    snippetGlobals['current_ui_context'] = uicontext
+
+    if view_location is not None and view_location.isValid():
+        active_il_index = view_location.getInstrIndex()
+        ilType = view_location.getILViewType()
+        active_il_function = None
+        if ilType == FunctionGraphType.LowLevelILFunctionGraph and uiactioncontext.function.llil_if_available:
+            active_il_function = uiactioncontext.function.llil_if_available
+        elif ilType == FunctionGraphType.LowLevelILSSAFormFunctionGraph and uiactioncontext.function.llil_if_available:
+            active_il_function = uiactioncontext.function.llil_if_available.ssa_form
+        elif ilType == FunctionGraphType.MediumLevelILFunctionGraph and uiactioncontext.function.mlil_if_available:
+            active_il_function = uiactioncontext.function.mlil_if_available
+        elif ilType == FunctionGraphType.MediumLevelILSSAFormFunctionGraph and uiactioncontext.function.mlil_if_available:
+            active_il_function = uiactioncontext.function.mlil_if_available.ssa_form
+        elif ilType == FunctionGraphType.HighLevelILFunctionGraph and uiactioncontext.function.hlil_if_available:
+            active_il_function = uiactioncontext.function.hlil_if_available
+        elif ilType == FunctionGraphType.HighLevelILSSAFormFunctionGraph and uiactioncontext.function.hlil_if_available:
+            active_il_function = uiactioncontext.function.hlil_if_available.ssa_form
+
+        if active_il_function:
+            snippetGlobals['current_il_function'] = active_il_function
+            snippetGlobals['current_il_instruction'] = active_il_function[active_il_index]
+            snippetGlobals["current_il_basic_block"] = active_il_function[active_il_index].il_basic_block
+        else:
+            snippetGlobals['current_il_function'] = None
+            snippetGlobals['current_il_instruction'] = None
+            snippetGlobals["current_il_basic_block"] = None
+
+        var = None
+        if uiactioncontext is not None:
+            token_state = uiactioncontext.token
+            token = token_state.token if token_state.valid else None
+            var = token_state.localVar if token_state.localVarValid else None
+            if var and uiactioncontext.function:
+                var = Variable.from_core_variable(uiactioncontext.function, var)
+
+        snippetGlobals['current_variable'] = var
+        snippetGlobals['current_variable'] = token
+
     return snippetGlobals
 
 
@@ -192,6 +252,11 @@ class SnippetTask(BackgroundTaskThread):
             self.context.binaryView.file.navigate(self.context.binaryView.file.view, snippetGlobals['here'])
         if "current_address" in snippetGlobals and hasattr(self.context, "address") and snippetGlobals['current_address'] != self.context.address:
             self.context.binaryView.file.navigate(self.context.binaryView.file.view, snippetGlobals['current_address'])
+        if "current_raw_offset" in snippetGlobals and hasattr(self.context, "address") and snippetGlobals['current_raw_offset'] != self.context.binaryView.get_data_offset_for_address(self.context.address):
+            addr = self.context.binaryView.get_address_for_data_offset(snippetGlobals["current_raw_offset"])
+            if addr is not None:
+                if not self.context.binaryView.file.navigate(self.context.binaryView.file.view, addr):
+                    binaryninja.mainthread.execute_on_main_thread(lambda: self.locals["current_ui_context"].navigateForBinaryView(self.active_view, addr))
         if self.context.binaryView:
             self.context.binaryView.commit_undo_actions()
 
