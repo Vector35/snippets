@@ -152,17 +152,17 @@ def setupGlobals(uiactioncontext, uicontext):
         active_il_index = view_location.getInstrIndex()
         ilType = view_location.getILViewType()
         active_il_function = None
-        if ilType == FunctionGraphType.LowLevelILFunctionGraph and uiactioncontext.function.llil_if_available:
+        if ilType == FunctionGraphType.LowLevelILFunctionGraph and uiactioncontext.function and uiactioncontext.function.llil_if_available:
             active_il_function = uiactioncontext.function.llil_if_available
-        elif ilType == FunctionGraphType.LowLevelILSSAFormFunctionGraph and uiactioncontext.function.llil_if_available:
+        elif ilType == FunctionGraphType.LowLevelILSSAFormFunctionGraph and uiactioncontext.function and uiactioncontext.function.llil_if_available:
             active_il_function = uiactioncontext.function.llil_if_available.ssa_form
-        elif ilType == FunctionGraphType.MediumLevelILFunctionGraph and uiactioncontext.function.mlil_if_available:
+        elif ilType == FunctionGraphType.MediumLevelILFunctionGraph and uiactioncontext.function and uiactioncontext.function.mlil_if_available:
             active_il_function = uiactioncontext.function.mlil_if_available
-        elif ilType == FunctionGraphType.MediumLevelILSSAFormFunctionGraph and uiactioncontext.function.mlil_if_available:
+        elif ilType == FunctionGraphType.MediumLevelILSSAFormFunctionGraph and uiactioncontext.function and uiactioncontext.function.mlil_if_available:
             active_il_function = uiactioncontext.function.mlil_if_available.ssa_form
-        elif ilType == FunctionGraphType.HighLevelILFunctionGraph and uiactioncontext.function.hlil_if_available:
+        elif ilType == FunctionGraphType.HighLevelILFunctionGraph and uiactioncontext.function and uiactioncontext.function.hlil_if_available:
             active_il_function = uiactioncontext.function.hlil_if_available
-        elif ilType == FunctionGraphType.HighLevelILSSAFormFunctionGraph and uiactioncontext.function.hlil_if_available:
+        elif ilType == FunctionGraphType.HighLevelILSSAFormFunctionGraph and uiactioncontext.function and uiactioncontext.function.hlil_if_available:
             active_il_function = uiactioncontext.function.hlil_if_available.ssa_form
 
         if active_il_function:
