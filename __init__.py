@@ -190,7 +190,7 @@ def setupGlobals(uiactioncontext, uicontext):
                 var = Variable.from_core_variable(uiactioncontext.function, var)
 
         snippetGlobals['current_variable'] = var
-        snippetGlobals['current_variable'] = token
+        snippetGlobals['current_token'] = token
 
     return snippetGlobals
 
