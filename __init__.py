@@ -259,7 +259,7 @@ class SnippetTask(BackgroundTaskThread):
             self.context.binaryView.file.navigate(self.context.binaryView.file.view, snippetGlobals['here'])
         if "current_address" in snippetGlobals and hasattr(self.context, "address") and snippetGlobals['current_address'] != self.context.address:
             self.context.binaryView.file.navigate(self.context.binaryView.file.view, snippetGlobals['current_address'])
-        if "current_raw_offset" in snippetGlobals and hasattr(self.context, "address") and snippetGlobals['current_raw_offset'] != self.context.binaryView.get_data_offset_for_address(self.context.address):
+        if self.context.binaryView is not None and "current_raw_offset" in snippetGlobals and hasattr(self.context, "address") and snippetGlobals['current_raw_offset'] != self.context.binaryView.get_data_offset_for_address(self.context.address):
             addr = self.context.binaryView.get_address_for_data_offset(snippetGlobals["current_raw_offset"])
             if addr is not None:
                 if not self.context.binaryView.file.navigate(self.context.binaryView.file.view, addr):
