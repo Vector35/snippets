@@ -1,4 +1,4 @@
-# Snippet UI Plugin (v1.25)
+# Snippet UI Plugin (v1.26)
 Author: **Vector 35 Inc**
 
 _Powerful code-editing plugin for writing and managing python code-snippets with syntax highlighting, hotkey binding and other features_
