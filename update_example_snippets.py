@@ -10,6 +10,7 @@ import os
 
 domain = b'https://gist.github.com'
 path = b'/psifertex/6fbc7532f536775194edd26290892ef7' # Feel free to adapt to your own setup
+archive = path + b'/archive/'
 subfolder = 'default'                                 # Change to save the snippets to a different sub-folder
 tab2space = False
 width = 4
@@ -32,8 +33,8 @@ def update_snippets():
     url = domain + path
     log_info("Downloading from: %s" % url)
     source = download(url)
-    zipPath = [s for s in source.split(b'\"') if s.endswith(b'.zip')]
-    if len(zipPath) != 1:
+    zipPath = [s for s in source.split(b'\"') if s.endswith(b'.zip') and archive in s]
+    if len(zipPath) != 2:
         log_error("Update failed.")
         return
     url = domain + zipPath[0]
