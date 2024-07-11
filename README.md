@@ -11,8 +11,6 @@ As an added bonus, all snippets are added to the snippets menu and hot-keys can 
 
 ![](https://github.com/Vector35/snippets/blob/master/media/snippets.gif?raw=true)
 
-.
-
 
 ## Installation Instructions
 
