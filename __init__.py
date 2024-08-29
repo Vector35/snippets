@@ -169,12 +169,18 @@ def setupGlobals(uiactioncontext, uicontext):
             il_start = view.getSelectionStartILInstructionIndex()
 
             snippetGlobals['current_il_function'] = active_il_function
-            snippetGlobals['current_il_instruction'] = active_il_function[active_il_index]
-            snippetGlobals["current_il_basic_block"] = active_il_function[active_il_index].il_basic_block
-            snippetGlobals['current_il_instructions'] = (active_il_function[i] for i in range(
-                min(il_start, active_il_index),
-                max(il_start, active_il_index) + 1)
-            )
+            if active_il_index == 0xffffffffffffffff:
+                # Invalid index
+                snippetGlobals['current_il_instruction'] = None
+                snippetGlobals["current_il_basic_block"] = None
+                snippetGlobals['current_il_instructions'] = None
+            else:
+                snippetGlobals['current_il_instruction'] = active_il_function[active_il_index]
+                snippetGlobals["current_il_basic_block"] = active_il_function[active_il_index].il_basic_block
+                snippetGlobals['current_il_instructions'] = (active_il_function[i] for i in range(
+                    min(il_start, active_il_index),
+                    max(il_start, active_il_index) + 1)
+                )
         else:
             snippetGlobals['current_il_function'] = None
             snippetGlobals['current_il_instruction'] = None
