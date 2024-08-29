@@ -174,7 +174,7 @@ def setupGlobals(uiactioncontext, uicontext):
 
             snippetGlobals['current_il_function'] = active_il_function
 
-            if active_il_index in active_il_function:
+            if active_il_index < len(active_il_function):
                 snippetGlobals['current_il_instruction'] = active_il_function[active_il_index]
                 snippetGlobals["current_il_basic_block"] = active_il_function[active_il_index].il_basic_block
                 snippetGlobals['current_il_instructions'] = (active_il_function[i] for i in range(
