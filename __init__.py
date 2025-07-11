@@ -150,7 +150,7 @@ def setupGlobals(uiactioncontext, uicontext):
 
     if view_location is not None and view_location.isValid():
         active_il_index = view_location.getInstrIndex()
-        ilType = view_location.getILViewType()
+        ilType = view_location.getILViewType().view_type
         active_il_function = None
         if ilType == FunctionGraphType.LowLevelILFunctionGraph and uiactioncontext.function and uiactioncontext.function.llil_if_available:
             active_il_function = uiactioncontext.function.llil_if_available
