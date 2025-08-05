@@ -45,6 +45,16 @@ Settings().register_setting("snippets.indentation", """
         "ignore" : ["SettingsProjectScope", "SettingsResourceScope"]
     }
     """)
+Settings().register_setting("snippets.onTopOfWindows", """
+    {
+        "title": "Keep on Top of Windows",
+        "type": "boolean",
+        "default": false,
+        "description" : "Always stays on top of other windows",
+        "ignore": ["SettingsProjectScope", "SettingsResourceScope"]
+    }
+    """)
+
 
 
 snippetPath = os.path.realpath(os.path.join(user_plugin_path(), "..", "snippets"))
@@ -280,6 +290,9 @@ class Snippets(QDialog):
         super(Snippets, self).__init__(parent)
         # Create widgets
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+        if Settings().get_bool("snippets.onTopOfWindows"):
+            self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+            self.setFocusPolicy(Qt.ClickFocus)
         self.title = QLabel(self.tr("Snippet Editor"))
         self.saveButton = QPushButton(self.tr("&Save"))
         self.saveButton.setShortcut(QKeySequence(self.tr("Ctrl+Shift+S")))
