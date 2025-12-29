@@ -11,9 +11,6 @@ As an added bonus, all snippets are added to the snippets menu and hot-keys can 
 
 ![](https://github.com/Vector35/snippets/blob/master/media/snippets.gif?raw=true)
 
-.
-
-
 ## Installation Instructions
 
 ### Darwin
@@ -34,18 +31,16 @@ This plugin requires the following minimum version of Binary Ninja:
 
 * 1528
 
-
-
 ## Required Dependencies
 
 The following dependencies are required for this plugin:
 
  * pip - pygments>=2.7.0,<2.9.0
 
-
 ## License
 
 This plugin is released under a MIT license.
+
 ## Metadata Version
 
 2
