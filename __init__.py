@@ -689,6 +689,9 @@ class Snippets(QDialog):
                 return
 
         folder = get_directory_name_input("Where would you like the plugin saved?", user_plugin_path())
+        if not folder:
+            log_debug("Snippets: Aborting export due to user cancelling out of choosing a folder.")
+            return
 
         if self.snippetName.text() == "":
             log_alert("Snippets must have a name")
