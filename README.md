@@ -9,7 +9,7 @@ The snippet editor started as a simple example UI plugin to demonstrate new feat
 
 As an added bonus, all snippets are added to the snippets menu and hot-keys can be associated with them as they make use of the action system. All action-system items are also available through the command-palette (CTL/CMD-p).
 
-![](https://github.com/Vector35/snippets/blob/master/media/snippets.gif?raw=true)
+![](https://raw.githubusercontent.com/Vector35/snippets/refs/heads/master/media/snippets.gif)
 
 ## Installation Instructions
 
