@@ -19,7 +19,8 @@ from binaryninja.enums import FunctionGraphType
 from binaryninjaui import (getMonospaceFont, UIAction, UIActionHandler, Menu, UIContext)
 from PySide6.QtWidgets import (QLineEdit, QPushButton, QApplication, QWidget,
      QVBoxLayout, QHBoxLayout, QDialog, QFileSystemModel, QTreeView, QLabel, QSplitter,
-     QInputDialog, QMessageBox, QHeaderView, QKeySequenceEdit, QCheckBox, QMenu, QAbstractItemView)
+     QInputDialog, QMessageBox, QHeaderView, QKeySequenceEdit, QCheckBox, QMenu, QAbstractItemView,
+     QLayout)
 from PySide6.QtCore import (QDir, Qt, QFileInfo, QItemSelectionModel, QSettings, QUrl,
                             QFileSystemWatcher, QObject, Signal, Slot)
 from PySide6.QtGui import (QFontMetrics, QDesktopServices, QKeySequence, QIcon, QColor, QAction,
@@ -281,7 +282,17 @@ class Snippets(QDialog):
     def __init__(self, context, parent=None):
         super(Snippets, self).__init__(parent)
         # Create widgets
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+        # QDialog + BN parent often ends up without useful resize chrome on Linux/Wayland.
+        # Promote to a real Window with min/max/close and an explicit size grip.
+        self.setWindowFlags(
+            (self.windowFlags()
+             | Qt.Window
+             | Qt.WindowMinimizeButtonHint
+             | Qt.WindowMaximizeButtonHint
+             | Qt.WindowCloseButtonHint)
+            & ~Qt.WindowContextHelpButtonHint
+        )
+        self.setSizeGripEnabled(True)
         self.title = QLabel(self.tr("Snippet Editor"))
         self.saveButton = QPushButton(self.tr("&Save"))
         self.saveButton.setShortcut(QKeySequence(self.tr("Ctrl+Shift+S")))
@@ -400,6 +411,8 @@ class Snippets(QDialog):
 
         hlayout = QHBoxLayout()
         hlayout.addWidget(hsplitter)
+        # Keep the dialog user-resizable (SetFixedSize would lock the window).
+        hlayout.setSizeConstraint(QLayout.SetDefaultConstraint)
 
         self.showNormal() #Fixes bug that maximized windows are "stuck"
         #Because you can't trust QT to do the right thing here
@@ -412,6 +425,9 @@ class Snippets(QDialog):
         else:
             self.edit.setMinimumWidth(80 * font.averageCharWidth())
             self.edit.setMinimumHeight(30 * font.lineSpacing())
+        # Ensure a restored geometry cannot leave min==max (non-resizable).
+        self.setMinimumSize(400, 300)
+        self.setMaximumSize(16777215, 16777215)
 
         # Set dialog layout
         self.setLayout(hlayout)
