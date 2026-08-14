@@ -281,7 +281,6 @@ class Snippets(QDialog):
     def __init__(self, context, parent=None):
         super(Snippets, self).__init__(parent)
         # Create widgets
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.title = QLabel(self.tr("Snippet Editor"))
         self.saveButton = QPushButton(self.tr("&Save"))
         self.saveButton.setShortcut(QKeySequence(self.tr("Ctrl+Shift+S")))
@@ -558,7 +557,7 @@ class Snippets(QDialog):
         self.readOnly(False)
 
     def newFileDialog(self):
-        (snippetName, ok) = QInputDialog.getText(self, self.tr("Snippet Name"), self.tr("Snippet Name: "), flags=self.windowFlags())
+        (snippetName, ok) = QInputDialog.getText(self, self.tr("Snippet Name"), self.tr("Snippet Name: "))
         if ok and snippetName:
             if not snippetName.endswith(".py"):
                 snippetName += ".py"
