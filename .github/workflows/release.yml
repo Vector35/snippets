@@ -1,0 +1,70 @@
+# Cut a new release of this Binary Ninja plugin.
+#
+# Copy this file into your own plugin repository as .github/workflows/release.yml
+# and it works unmodified, as long as plugin.json is at the repository root. All
+# of the actual work lives in Vector35/plugin_actions, so fixes to
+# the release machinery reach you by moving the @v1 tag rather than by you
+# re-copying this file.
+#
+# How to use it
+# -------------
+# GitHub UI: Actions -> "Release" -> "Run workflow". Leave the version box empty
+# to bump the last number of the current version (1.3.5 -> 1.3.6), or type an
+# explicit version such as 2.0.0. The description box is optional: fill it in to
+# write the release notes yourself, or leave it blank to have GitHub generate
+# them from the commits since the last release. Whichever you choose becomes the
+# changelog shown to users in the extension manager.
+#
+# From the CLI: `gh workflow run release.yml` (optionally `-f version=2.0.0`
+# `-f description="Fixes the thing"` `-f dry-run=true`).
+
+name: Release
+
+on:
+  # Manual only -- releasing should always be a deliberate act, never a
+  # side effect of pushing code.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "New version (leave blank to bump the last number, e.g. 1.3.5 -> 1.3.6)"
+        required: false
+        default: ""
+        type: string
+      description:
+        description: "Release description (leave blank to generate notes from the commits)"
+        required: false
+        default: ""
+        type: string
+      dry-run:
+        description: "Validate only: report the version that would be released without publishing anything"
+        required: false
+        default: false
+        type: boolean
+
+# The built-in GITHUB_TOKEN needs write access to push the bump commit, push the
+# tag, and create the release. No personal access token or third-party secret is
+# required. (Note that pushes made with GITHUB_TOKEN deliberately do not trigger
+# other workflows, so this cannot cause a release loop.)
+permissions:
+  contents: write
+
+# Never let two releases run at once; they would race on the same branch.
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      # No checkout step: the action checks the repository out itself, because
+      # the checkout parameters are load-bearing (the default branch, with full
+      # history and every tag). Set checkout: false if you need your own.
+      - name: Release
+        uses: Vector35/plugin_actions@v1
+        with:
+          version: ${{ inputs.version }}
+          description: ${{ inputs.description }}
+          dry-run: ${{ inputs.dry-run }}
+          # Uncomment if your manifest is not at the repository root:
+          # plugin-json: src/plugin.json
