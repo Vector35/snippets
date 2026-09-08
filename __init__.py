@@ -45,6 +45,15 @@ Settings().register_setting("snippets.indentation", """
         "ignore" : ["SettingsProjectScope", "SettingsResourceScope"]
     }
     """)
+Settings().register_setting("snippets.keepOnTopOfMainWindow", """
+    {
+        "title" : "Keep on Top of Main Window",
+        "type" : "boolean",
+        "default" : false,
+        "description" : "Always stays on top of main window",
+        "ignore" : ["SettingsProjectScope", "SettingsResourceScope"]
+    }
+    """)
 
 
 snippetPath = os.path.realpath(os.path.join(user_plugin_path(), "..", "snippets"))
@@ -439,6 +448,9 @@ class Snippets(QDialog):
                 self.readOnly(True)
         else:
             self.readOnly(True)
+
+    def setFloating(self, floating: bool):
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowType_Mask | Qt.WindowType.Tool)
 
     def setGlobalUpdateFlag(self):
         """Update the "update analysis after run?" global variable."""
@@ -858,16 +870,19 @@ def reloadActions(_):
 
 def launchPlugin(context):
     global snippets
-    # Terrible hack to fix Shiboken freeing the object when snippets
-    # is launched after a binary view is open instead of before
-    # TODO: Fix this properly
-    if snippets:
+
+    if snippets is None:
+        snippets = Snippets(context, parent=context.widget)
+    else:
+        # Terrible hack to fix Shiboken freeing the object when snippets
+        # is launched after a binary view is open instead of before
+        # TODO: Fix this properly
         try:
             snippets.close()
-        except:
+        except RuntimeError:
             snippets = Snippets(context, parent=context.widget)
-    else:
-        snippets = Snippets(context, parent=context.widget)
+
+    snippets.setFloating(Settings().get_bool("snippets.keepOnTopOfMainWindow"))
     snippets.show()
 
 Snippets.registerAllSnippets()
